@@ -1,15 +1,34 @@
 import React, { useState } from "react";
-import "../styles/adminlogin.css";
+import "../../styles/adminlogin.css";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login logic here, e.g., call API
-    console.log({ email, password, rememberMe });
+    try {
+      const res = await fetch("http://localhost:5000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.user && data.user.password_hash) {
+          delete data.user.password_hash;
+        }
+        localStorage.setItem("user", JSON.stringify(data.user));
+        navigate("/admin/dashboard");
+      } else {
+        alert(data.message || "Login failed");
+      }
+    } catch (err) {
+      alert("Server error");
+    }
   };
 
   return (

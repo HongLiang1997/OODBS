@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 
-// Pass in your MySQL promisePool from index.js
 let pool;
 
 // Middleware to inject the DB pool into router (optional)
@@ -20,18 +19,18 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST new organization
-router.post('/', async (req, res) => {
-  const { organization_id, name, type, contact_email } = req.body;
-  if (!organization_id || !name || !type || !contact_email) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+// GET organization by organization_id
+router.get('/:organization_id', async (req, res) => {
+  const { organization_id } = req.params;
   try {
-    await pool.query(
-      'INSERT INTO Organization (organization_id, name, type, contact_email) VALUES (?, ?, ?, ?)',
-      [organization_id, name, type, contact_email]
+    const [rows] = await pool.query(
+      'SELECT * FROM Organization WHERE organization_id = ?',
+      [organization_id]
     );
-    res.status(201).json({ message: 'Organization added', id: organization_id });
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

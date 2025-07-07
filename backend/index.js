@@ -28,6 +28,9 @@ const organizationsRouter = require('./routes/organizations');
 
 // Use routes with a prefix
 app.use('/organizations', organizationsRouter);
+// Login
+const authRouter = require('./routes/Auth');
+app.use('/auth', authRouter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
