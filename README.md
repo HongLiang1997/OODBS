@@ -25,4 +25,7 @@ npm create vite@latest . -- --template react
 (Select React -> JavaScript)
 
 npm install axios react-router-dom
+npm install bootstrap
+npm install bootstrap @popperjs/core
+
 ```

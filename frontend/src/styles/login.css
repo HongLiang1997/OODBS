@@ -1,0 +1,15 @@
+/* Make the wrapper fill viewport and center content */
+.login-wrapper {
+  display: flex;
+  justify-content: center; /* horizontally center */
+  align-items: center;     /* vertically center */
+  min-height: 100vh;       /* full viewport height */
+  padding: 1rem;           /* some padding on small screens */
+  background-color: #f8f9fa; /* optional light background */
+}
+
+/* Limit max width for the login section */
+.login-section {
+  max-width: 900px;
+  width: 100%;
+}
