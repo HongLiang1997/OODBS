@@ -3,10 +3,12 @@
 This is a fullstack web application using **Node.js + Express** for the backend and **React + Vite** for the frontend. The system includes user login and MySQL database integration.
 
 ## Project Structure
+```
 /OODBS
 ├── backend/ # Node.js + Express server
 ├── frontend/ # React + Vite client
 └── README.md
+```
 
 ## BackEnd
 ### Package Needed
@@ -20,6 +22,7 @@ npm install --save-dev nodemon
 ### Package Needed
 ```
 npm create vite@latest . -- --template react
-npm install
+(Select React -> JavaScript)
+
 npm install axios react-router-dom
 ```
