@@ -1,0 +1,140 @@
+.dashboard-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 2rem;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+/* Bus Overview Card Styles */
+.bus-overview-card {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 1.5rem 1.5rem 1.5rem 1.5rem;
+}
+
+.bus-overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.bus-overview-subtitle {
+  padding: 10px;
+}
+
+.bus-overview-header h4 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.bus-overview-link {
+  font-size: 0.95em;
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.bus-overview-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.bus-overview-list {
+  max-height: 170px;
+  overflow-y: auto;
+}
+
+.bus-overview-empty {
+  color: #888;
+  font-size: 1em;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+.bus-overview-item {
+  border-bottom: 1px solid #eee;
+  padding: 0.5rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1em;
+  padding: 20px;
+}
+
+.bus-overview-item:last-child {
+  border-bottom: none;
+}
+
+.bus-overview-meta {
+  font-size: 0.95em;
+  color: #555;
+}
+
+.bus-status {
+  color: #888;
+  margin-left: 0.5em;
+  font-size: 0.95em;
+}
+
+.bus-status-pill {
+  font-size: 0.85em;
+  font-weight: 600;
+  padding: 0.2em 0.7em;
+  border-radius: 12px;
+  background: #eee;
+  color: #23272f;
+  margin-left: 1em;
+  text-transform: capitalize;
+}
+
+.bus-status-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.bus-status-tab {
+  background: #f5f6fa;
+  border: none;
+  border-radius: 16px;
+  padding:8px;
+  font-size: 0.8em;
+  color: #23272f;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.bus-status-tab.active,
+.bus-status-tab:hover {
+  background: #007bff;
+  color: #fff;
+}
+
+.bus-status-pill.enroute {
+  background: #e6f0ff;
+  color: #007bff;
+}
+
+.bus-status-pill.active {
+  background: #e6f9ed;
+  color: #28a745;
+}
+
+.bus-status-pill.inactive {
+  background: #fbeaea;
+  color: #dc3545;
+}
+
+.bus-status-pill.on-break {
+  background: #fffbe6;
+  color: #ffc107;
+}

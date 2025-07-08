@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { FaBus, FaChartLine } from "react-icons/fa";
+import { FaBus, FaChartLine, FaSignOutAlt } from "react-icons/fa";
 import { FaLocationDot } from "react-icons/fa6";
 import { GrSchedules, GrOrganization } from "react-icons/gr";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const AdminSidebar = ({ open }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [busDropdownOpen, setBusDropdownOpen] = useState(false);
 
-  // Expand/collapse Bus Management dropdown based on current route
   useEffect(() => {
     if (location.pathname.startsWith("/admin/bus-management")) {
       setBusDropdownOpen(true);
@@ -18,6 +18,11 @@ const AdminSidebar = ({ open }) => {
   }, [location.pathname]);
 
   const isActive = (path) => location.pathname === path;
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/admin");
+  };
 
   return (
     <div id="sidenav-1" className={`sidenav${open ? " open" : ""}`}>
@@ -51,7 +56,7 @@ const AdminSidebar = ({ open }) => {
               <FaBus className="me-3" />
               Bus Management
             </span>
-            <span style={{ fontSize: "1.2em" }}>{busDropdownOpen ? "▲" : "▼"}</span>
+            <span className="dropdown-arrow">{busDropdownOpen ? "▲" : "▼"}</span>
           </div>
           {busDropdownOpen && (
             <ul className="sidebar-submenu">
@@ -93,6 +98,10 @@ const AdminSidebar = ({ open }) => {
           </a>
         </li>
       </ul>
+      <button className="sidebar-logout-btn" onClick={handleLogout}>
+        <FaSignOutAlt className="me-2" />
+        Logout
+      </button>
     </div>
   );
 };

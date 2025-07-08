@@ -1,5 +1,7 @@
 /* Sidebar */
 .sidenav {
+  display: flex;
+  flex-direction: column;
   width: 240px;
   position: fixed;
   top: 56px;
@@ -10,8 +12,8 @@
   overflow-y: auto;
   z-index: 1040;
   transform: translateX(-100%);
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-  box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
   padding-top: 1rem;
 }
 
@@ -20,9 +22,33 @@
 }
 
 .sidenav-menu {
+  flex: 1 1 auto;
+
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+.sidebar-logout-btn {
+  margin: 1.5rem 1rem 1rem 1rem;
+  padding: 0.75rem 1.5rem;
+  width: calc(100% - 2rem);
+  background: #23272f;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.sidebar-logout-btn:hover {
+  background: #343a40;
+
+  color: #ffd700;
 }
 
 .sidenav-item + .sidenav-item {
@@ -104,18 +130,18 @@
 .navbar {
   z-index: 1050;
   height: 56px;
-  transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: #181c20 !important;
   color: #fff;
 }
 
 .shadow-navbar {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .navbar-with-sidebar {
   margin-left: 240px;
-  transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .navbar .btn svg {
@@ -140,19 +166,6 @@
   line-height: 1.8;
 }
 
-/* Main content wrapper */
-.main-content {
-  transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1);
-  margin-left: 0;
-  padding: 3.5rem 1rem 1rem 1rem;
-  background: #f5f6fa;
-  min-height: 100vh;
-}
-
-.main-content.shifted {
-  margin-left: 240px;
-}
-
 /* Responsive: Hide sidebar and remove margin on small screens */
 @media (max-width: 768px) {
   .sidenav {
@@ -161,8 +174,10 @@
   .sidenav.open {
     transform: translateX(0);
   }
-  .navbar-with-sidebar,
-  .main-content.shifted {
+  .navbar-with-sidebar {
     margin-left: 0;
+  }
+  .main-content.shifted {
+    margin-left: 0 !important;
   }
 }

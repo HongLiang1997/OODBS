@@ -1,0 +1,23 @@
+.page-title {
+  background-color: white;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+}
+.page-content {
+  margin: 1rem;
+}
+
+/* Main content wrapper */
+.main-content {
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 0;
+  padding: 3.5rem 0rem 0rem 0rem;
+  background: #f5f6fa;
+  min-height: 100vh;
+}
+
+.main-content.shifted {
+  margin-left: 240px;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

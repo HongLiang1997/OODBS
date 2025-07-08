@@ -1,0 +1,150 @@
+/* Card style for full-width management */
+.bus-management-card {
+  margin: 1rem;
+  padding: 2rem 1.5rem;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Controls */
+.bus-management-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.bus-search {
+  flex: 1 1 250px;
+  padding: 0.5em 1em;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 1em;
+}
+
+.bus-status-filter {
+  padding: 0.5em 1em;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 1em;
+  background: #f5f6fa;
+}
+
+.sortable-status {
+  font-weight: 700;
+  color: #007bff;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.sortable-status:hover {
+  color: #0056b3;
+}
+
+.bus-management-list {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-top: 2rem;
+  overflow-x: auto;
+}
+
+.bus-management-header,
+.bus-management-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.5fr 1.2fr 1fr 1.2fr 1fr 1.5fr;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  font-size: 0.8em;
+}
+
+.bus-management-header {
+  font-weight: 700;
+  background: #f5f6fa;
+  border-bottom: 2px solid #eee;
+}
+
+.bus-management-row {
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+}
+
+.bus-management-row:last-child {
+  border-bottom: none;
+}
+
+.bus-management-row:hover {
+  background: #f9fafc;
+}
+
+.bus-management-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #888;
+  font-size: 1.1em;
+}
+
+.bus-action-btn {
+  margin: 0.2em;
+  padding: 0.35em 1em;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8em;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.bus-action-btn.edit {
+  background: #e6f0ff;
+  color: #007bff;
+}
+
+.bus-action-btn.edit:hover {
+  background: #007bff;
+  color: #fff;
+}
+
+.bus-action-btn.delete {
+  background: #fbeaea;
+  color: #dc3545;
+}
+
+.bus-action-btn.delete:hover {
+  background: #dc3545;
+  color: #fff;
+}
+
+/* Reuse status pill styles from admin-dashboard.css if needed */
+.bus-status-pill {
+  font-size: 0.85em;
+  font-weight: 600;
+  padding: 0.2em 0.7em;
+  border-radius: 12px;
+  background: #eee;
+  color: #23272f;
+  margin-left: 0;
+  text-transform: capitalize;
+  margin-right: 0.5em;
+}
+
+.bus-status-pill.active {
+  background: #e6f9ed;
+  color: #28a745;
+}
+.bus-status-pill.inactive {
+  background: #fbeaea;
+  color: #dc3545;
+}
+.bus-status-pill.on-break {
+  background: #fffbe6;
+  color: #ffc107;
+}
+.bus-status-pill.enroute {
+  background: #e6f0ff;
+  color: #007bff;
+}

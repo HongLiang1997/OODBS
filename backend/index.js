@@ -31,6 +31,9 @@ app.use('/organizations', organizationsRouter);
 // Login
 const authRouter = require('./routes/Auth');
 app.use('/auth', authRouter);
+//bus
+const busesRouter = require('./routes/buses');
+app.use('/buses', busesRouter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
