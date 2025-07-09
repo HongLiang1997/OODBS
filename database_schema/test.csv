@@ -1,0 +1,6 @@
+plate_number,driver_name,driver_phone_num,capacity,company,status,organization_id
+SGB0001A,John Tan,90010001,40,ComfortDelGro,inactive,1
+SGB0002B,Alice Goh,90010002,36,SMRT,inactive,1
+SGB0003C,Ben Lim,90010003,45,SBS Transit,inactive,1
+SGB0004D,Rachel Toh,90010004,30,Aedge Holdings,inactive,1
+SGB0005E,Eric Wong,90010005,50,Tower Transit,inactive,1

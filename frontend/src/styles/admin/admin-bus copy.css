@@ -1,7 +1,7 @@
 /* Card style for full-width management */
 .bus-management-card {
   margin: 1rem;
-  padding: 2rem 1.5rem;
+  padding: 1.5rem 2rem;
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
@@ -24,14 +24,14 @@
   padding: 0.5em 1em;
   border-radius: 6px;
   border: 1px solid #ddd;
-  font-size: 1em;
+  font-size: 0.75em;
 }
 
 .bus-status-filter {
   padding: 0.5em 1em;
   border-radius: 6px;
   border: 1px solid #ddd;
-  font-size: 1em;
+  font-size: 0.75em;
   background: #f5f6fa;
 }
 
@@ -49,7 +49,6 @@
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  margin-top: 2rem;
   overflow-x: auto;
 }
 
@@ -59,7 +58,11 @@
   grid-template-columns: 1.2fr 1.5fr 1.2fr 1fr 1.2fr 1fr 1.5fr;
   align-items: center;
   padding: 1rem 1.5rem;
-  font-size: 0.8em;
+  font-size: 0.7em;
+}
+
+.bus-management-row{
+    font-size: 0.7em;
 }
 
 .bus-management-header {
@@ -93,7 +96,7 @@
   padding: 0.35em 1em;
   border: none;
   border-radius: 6px;
-  font-size: 0.8em;
+  font-size: 1em;
   cursor: pointer;
   font-weight: 500;
   transition: background 0.2s, color 0.2s;
@@ -121,7 +124,7 @@
 
 /* Reuse status pill styles from admin-dashboard.css if needed */
 .bus-status-pill {
-  font-size: 0.85em;
+  font-size: 1em !important;
   font-weight: 600;
   padding: 0.2em 0.7em;
   border-radius: 12px;
@@ -147,4 +150,33 @@
 .bus-status-pill.enroute {
   background: #e6f0ff;
   color: #007bff;
+}
+
+.bus-pagination{
+  margin-top: 1rem;
+
+}
+
+.pagination{
+  margin: 0;
+}
+
+.bus-deletion-cart {
+  background-color: #fff4f4;
+  border: 1px solid #f5c2c2;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.bus-deletion-cart h4 {
+  color: #a80000;
+}
+
+.delete-multiple-btn {
+  background-color: #dc3545;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  margin-top: 0.5rem;
+  cursor: pointer;
 }

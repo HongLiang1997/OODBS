@@ -5,7 +5,10 @@ import RequireAuth from "./components/admin/RequireAuth";
 
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import BusManagement from "./pages/admin/BusManagement";
+import BusManagement from "./pages/admin/busmanager/BusManagement";
+import BusAddition from "./pages/admin/busmanager/BusAddition";
+import BusDetail from "./pages/admin/busmanager/BusDetails";
+
 
 function App() {
   return (
@@ -19,7 +22,11 @@ function App() {
         <Route element={<RequireAuth />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<AdminDashboard />} />
+            {/* Bus Related Pages */}
             <Route path="bus-management" element={<BusManagement />} />
+            <Route path="bus-management/add" element={<BusAddition />} />
+              <Route path="bus-management/bus-details/:bus_id" element={<BusDetail />} />
+
             {/* Add more nested admin pages here */}
           </Route>
         </Route>

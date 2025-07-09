@@ -1,0 +1,167 @@
+/* Card wrapper */
+.management-card {
+  margin: 1rem;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Controls */
+.management-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.management-search {
+  flex: 1 1 250px;
+  padding: 0.5em 1em;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 0.75em;
+}
+
+.filter-select {
+  padding: 0.5em 1em;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 0.75em;
+  background: #f5f6fa;
+}
+
+/* Table/List */
+.management-list {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+}
+
+.management-header,
+.management-row {
+  display: grid;
+  /* You can customize grid-template-columns dynamically or keep as needed */
+  grid-template-columns: 1.2fr 1.5fr 1.2fr 1fr 1.2fr 1fr 1.5fr;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  font-size: 0.7em;
+}
+
+.management-row {
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+}
+.management-row:last-child {
+  border-bottom: none;
+}
+.management-row:hover {
+  background: #f9fafc;
+}
+
+.management-header {
+  font-weight: 700;
+  background: #f5f6fa;
+  border-bottom: 2px solid #eee;
+}
+
+.management-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #888;
+  font-size: 1.1em;
+}
+
+/* Action buttons */
+.action-btn {
+  margin: 0.2em;
+  padding: 0.35em 1em;
+  border: none;
+  border-radius: 6px;
+  font-size: 1em;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.action-btn.edit {
+  background: #e6f0ff;
+  color: #007bff;
+}
+.action-btn.edit:hover {
+  background: #007bff;
+  color: #fff;
+}
+
+.action-btn.delete {
+  background: #fbeaea;
+  color: #dc3545;
+}
+.action-btn.delete:hover {
+  background: #dc3545;
+  color: #fff;
+}
+
+/* Status pill */
+/* Add to admin-management.css or a new bus-specific CSS file */
+.bus-status-pill {
+  font-size: 1em;
+  font-weight: 600;
+  padding: 0.2em 0.7em;
+  border-radius: 12px;
+  background: #eee;
+  color: #23272f;
+  text-transform: capitalize;
+  margin-right: 0.5em;
+}
+.bus-status-pill.active { background: #e6f9ed; color: #28a745; }
+.bus-status-pill.inactive { background: #fbeaea; color: #dc3545; }
+.bus-status-pill.on-break { background: #fffbe6; color: #ffc107; }
+.bus-status-pill.enroute { background: #e6f0ff; color: #007bff; }
+
+/* Pagination */
+.management-pagination {
+  margin-top: 1rem;
+}
+
+/* Bulk deletion cart */
+.management-deletion-cart {
+  background-color: #fff4f4;
+  border: 1px solid #f5c2c2;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+.management-deletion-cart h4 {
+  color: #a80000;
+}
+.delete-multiple-btn {
+  background-color: #dc3545;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+
+.pagination{
+  margin: 0;
+}
+.actions-col button{
+  font-size: 1em;
+}
+
+.actions-col  .btn-danger:disabled{
+    background-color: white;
+    color: grey;
+    border-color: grey;
+}
+.btn-outline-secondary:disabled{
+    background-color: white;
+    color: lightcoral;
+    border-color: lightcoral;
+}

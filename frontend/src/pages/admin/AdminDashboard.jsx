@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import "../../styles/admin-dashboard.css";
+import "../../styles/admin/admin-dashboard.css";
 
 const BUS_STATUSES = [
   { key: "all", label: "All" },
@@ -51,7 +51,7 @@ export default function AdminDashboard() {
               <div className="col-md-6 mb-4">
                 <div className="dashboard-card bus-overview-card">
                   <div className="bus-overview-header">
-                    <h3>Bus Overview</h3>
+                    <h4>Bus Overview</h4>
                     <a
                       href="/admin/bus-management"
                       className="bus-overview-link"

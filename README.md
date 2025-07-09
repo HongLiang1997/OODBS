@@ -16,6 +16,8 @@ This is a fullstack web application using **Node.js + Express** for the backend 
 npm init -y
 npm install express cors dotenv mysql2
 npm install --save-dev nodemon
+npm install multer xlsx
+
 ```
 
 ## FrontEnd

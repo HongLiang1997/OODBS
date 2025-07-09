@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import "../styles/admin-nav.css";
-import "../styles/admin-main.css";
+import "../styles/admin/admin-nav.css";
+import "../styles/admin/admin-main.css";
 
 import { Outlet } from 'react-router-dom';
 import Nav from '../components/admin/AdminNav';

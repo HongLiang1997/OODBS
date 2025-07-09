@@ -1,7 +1,6 @@
 import React from "react";
 import AdminSidebar from "./AdminSidebar";
 import { FaBus, FaBars, FaVideo, FaBell, FaTh } from "react-icons/fa";
-import "../../styles/admin-nav.css";
 
 const AdminNav = ({ sidebarOpen, setSidebarOpen }) => {
   // Read user from localStorage

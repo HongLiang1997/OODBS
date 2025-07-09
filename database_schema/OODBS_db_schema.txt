@@ -1,6 +1,6 @@
 -- Organization Table
 CREATE TABLE Organization (
-    organization_id INT PRIMARY KEY,
+    organization_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255),
     type VARCHAR(50),
     contact_email VARCHAR(255)
@@ -8,7 +8,7 @@ CREATE TABLE Organization (
 
 -- Users Table
 CREATE TABLE Users (
-    user_id INT PRIMARY KEY,
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
     organization_id INT,
     email VARCHAR(255),
     password_hash VARCHAR(255),
@@ -19,7 +19,7 @@ CREATE TABLE Users (
 
 -- Pickup_Location Table
 CREATE TABLE Pickup_Location (
-    pickup_id INT PRIMARY KEY,
+    pickup_id INT AUTO_INCREMENT PRIMARY KEY,
     organization_id INT,
     type VARCHAR(50),
     name VARCHAR(255),
@@ -30,7 +30,7 @@ CREATE TABLE Pickup_Location (
 
 -- Organization_Locations Table
 CREATE TABLE Organization_Locations (
-    location_id INT PRIMARY KEY,
+    location_id INT AUTO_INCREMENT PRIMARY KEY,
     organization_id INT,
     name VARCHAR(255),
     latitude FLOAT,
@@ -40,7 +40,7 @@ CREATE TABLE Organization_Locations (
 
 -- Bus Table
 CREATE TABLE Bus (
-    bus_id INT PRIMARY KEY,
+    bus_id INT AUTO_INCREMENT PRIMARY KEY,
     organization_id INT,
     plate_number VARCHAR(50),
     driver_name VARCHAR(255),
@@ -53,7 +53,7 @@ CREATE TABLE Bus (
 
 -- Bus_Seats Table
 CREATE TABLE Bus_Seats (
-    seat_id INT PRIMARY KEY,
+    seat_id INT AUTO_INCREMENT PRIMARY KEY,
     bus_id INT,
     seat_number VARCHAR(10),
     is_reserved BOOLEAN,
@@ -62,7 +62,7 @@ CREATE TABLE Bus_Seats (
 
 -- Bus_Services Table
 CREATE TABLE Bus_Services (
-    service_id INT PRIMARY KEY,
+    service_id INT AUTO_INCREMENT PRIMARY KEY,
     bus_id INT,
     pickup_id INT,
     service_date TIMESTAMP,
@@ -74,7 +74,7 @@ CREATE TABLE Bus_Services (
 
 -- Schedule Table
 CREATE TABLE Schedule (
-    schedule_id INT PRIMARY KEY,
+    schedule_id INT AUTO_INCREMENT PRIMARY KEY,
     service_id INT,
     departure_time TIMESTAMP,
     arrival_time TIMESTAMP,
@@ -83,13 +83,13 @@ CREATE TABLE Schedule (
 
 -- Tier Table
 CREATE TABLE Tier (
-    tier_id INT PRIMARY KEY,
+    tier_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(10)
 );
 
 -- Passenger_Requests Table
 CREATE TABLE Passenger_Requests (
-    request_id INT PRIMARY KEY,
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     bus_id INT,
     pickup_id INT,
@@ -106,7 +106,7 @@ CREATE TABLE Passenger_Requests (
 
 -- Seat_Assignments Table
 CREATE TABLE Seat_Assignments (
-    assignment_id INT PRIMARY KEY,
+    assignment_id INT AUTO_INCREMENT PRIMARY KEY,
     request_id INT,
     seat_id INT,
     FOREIGN KEY (request_id) REFERENCES Passenger_Requests(request_id),
@@ -115,7 +115,7 @@ CREATE TABLE Seat_Assignments (
 
 -- Routes Table
 CREATE TABLE Routes (
-    route_id INT PRIMARY KEY,
+    route_id INT AUTO_INCREMENT PRIMARY KEY,
     schedule_id INT,
     request_id INT,
     tier_id INT,

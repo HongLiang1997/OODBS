@@ -17,7 +17,7 @@
 .admin-login {
   position: relative;
   color: #fff;
-  background-image: url('../assets/login_picture/bus_picture.jpg');
+  background-image: url('../../assets/login_picture/bus_picture.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
