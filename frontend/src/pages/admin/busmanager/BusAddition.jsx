@@ -99,111 +99,113 @@ export default function BusInsertAndBulkUpload() {
 
   return (
     <div>
-     
       <div className="page-title">
         <h3>Bus Addition</h3>
       </div>
-      <div className="dashboard-card bus-management-card mb-4">
-        <h4 className="mb-3">Add New Bus</h4>
-        <form className="add-bus-form" onSubmit={handleNewBusSubmit}>
-          <div className="row g-3">
-            <div className="col-md-6">
-              <label htmlFor="plate_number" className="form-label">
-                Plate Number
-              </label>
-              <input
-                type="text"
-                id="plate_number"
-                name="plate_number"
-                className="form-control"
-                value={newBus.plate_number}
-                onChange={handleInputChange}
-                required
-              />
+      <div className="page-content add-bus-content">
+        <div className="dashboard-card add-bus-card mb-4 d-flex flex-column">
+          <h4 className="mb-3">Add New Bus</h4>
+          <form className="add-bus-form" onSubmit={handleNewBusSubmit}>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label htmlFor="plate_number" className="form-label">
+                  Plate Number
+                </label>
+                <input
+                  type="text"
+                  id="plate_number"
+                  name="plate_number"
+                  className="form-control"
+                  value={newBus.plate_number}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label htmlFor="driver_name" className="form-label">
+                  Driver Name
+                </label>
+                <input
+                  type="text"
+                  id="driver_name"
+                  name="driver_name"
+                  className="form-control"
+                  value={newBus.driver_name}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
             </div>
-            <div className="col-md-6">
-              <label htmlFor="driver_name" className="form-label">
-                Driver Name
-              </label>
-              <input
-                type="text"
-                id="driver_name"
-                name="driver_name"
-                className="form-control"
-                value={newBus.driver_name}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-          </div>
 
-          <div className="row g-3 mt-2">
-            <div className="col-md-6">
-              <label htmlFor="driver_phone_num" className="form-label">
-                Driver Phone Number
-              </label>
-              <input
-                type="tel"
-                id="driver_phone_num"
-                name="driver_phone_num"
-                className="form-control"
-                value={newBus.driver_phone_num}
-                onChange={handleInputChange}
-                required
-              />
+            <div className="row g-3 mt-2">
+              <div className="col-md-6">
+                <label htmlFor="driver_phone_num" className="form-label">
+                  Driver Phone Number
+                </label>
+                <input
+                  type="tel"
+                  id="driver_phone_num"
+                  name="driver_phone_num"
+                  className="form-control"
+                  value={newBus.driver_phone_num}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="col-md-3">
+                <label htmlFor="capacity" className="form-label">
+                  Capacity
+                </label>
+                <input
+                  type="number"
+                  id="capacity"
+                  name="capacity"
+                  className="form-control"
+                  value={newBus.capacity}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="col-md-3">
+                <label htmlFor="company" className="form-label">
+                  Company
+                </label>
+                <input
+                  type="text"
+                  id="company"
+                  name="company"
+                  className="form-control"
+                  value={newBus.company}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
             </div>
-            <div className="col-md-3">
-              <label htmlFor="capacity" className="form-label">
-                Capacity
-              </label>
-              <input
-                type="number"
-                id="capacity"
-                name="capacity"
-                className="form-control"
-                value={newBus.capacity}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="col-md-3">
-              <label htmlFor="company" className="form-label">
-                Company
-              </label>
-              <input
-                type="text"
-                id="company"
-                name="company"
-                className="form-control"
-                value={newBus.company}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-          </div>
 
-          <button type="submit" className="btn btn-primary mt-4">
-            Add Bus
-          </button>
-        </form>
-      </div>
+            <button type="submit" className="btn btn-primary mt-4">
+              Add Bus
+            </button>
+          </form>
+        </div>
 
-      {/* Bulk Upload */}
-      <div className="dashboard-card bus-management-card">
-        <h4 className="mb-3">Bulk Upload Buses (CSV or XLSX)</h4>
-        <form onSubmit={handleBulkUploadSubmit}>
-          <div className="mb-3">
-            <input
-              type="file"
-              accept=".csv, .xlsx"
-              className="form-control"
-              onChange={handleFileChange}
-            />
-          </div>
-          <button type="submit" className="btn btn-secondary">
-            Upload File
-          </button>
-        </form>
+        {/* Bulk Upload */}
+        <div className="dashboard-card add-bus-card mb-4 d-flex flex-column">
+          {" "}
+          <h4 className="mb-3">Bulk Upload Buses (CSV or XLSX)</h4>
+          <form onSubmit={handleBulkUploadSubmit}>
+            <div className="mb-3">
+              <input
+                type="file"
+                accept=".csv, .xlsx"
+                className="form-control"
+                onChange={handleFileChange}
+              />
+            </div>
+            <button type="submit" className="btn btn-secondary">
+              Upload File
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,19 @@
 .add-bus-form{
  font-size: 0.8rem;
 }
+
+.add-bus-card h4 {
+  text-align: left;
+  align-self: flex-start;
+  margin-bottom: 1rem;
+}
+
+/* Ensure the card itself doesn't center-align content */
+.add-bus-card {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.add-bus-content{
+    padding: 1px;
+}
