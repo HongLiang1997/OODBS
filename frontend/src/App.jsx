@@ -9,6 +9,8 @@ import BusManagement from "./pages/admin/busmanager/BusManagement";
 import BusAddition from "./pages/admin/busmanager/BusAddition";
 import BusDetail from "./pages/admin/busmanager/BusDetails";
 
+import ServiceManagement from "./pages/admin/servicemanager/ServiceManagement";
+import ServiceAddition from "./pages/admin/servicemanager/ServiceAddition";
 
 function App() {
   return (
@@ -25,9 +27,11 @@ function App() {
             {/* Bus Related Pages */}
             <Route path="bus-management" element={<BusManagement />} />
             <Route path="bus-management/add" element={<BusAddition />} />
-              <Route path="bus-management/bus-details/:bus_id" element={<BusDetail />} />
+            <Route path="bus-management/bus-details/:bus_id" element={<BusDetail />} />
 
             {/* Add more nested admin pages here */}
+            <Route path="service-management" element={<ServiceManagement />} />
+            <Route path="service-management/add" element={<ServiceAddition />} />
           </Route>
         </Route>
 

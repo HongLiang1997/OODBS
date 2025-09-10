@@ -8,12 +8,19 @@ const AdminSidebar = ({ open }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [busDropdownOpen, setBusDropdownOpen] = useState(false);
+  const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (location.pathname.startsWith("/admin/bus-management")) {
       setBusDropdownOpen(true);
     } else {
       setBusDropdownOpen(false);
+    }
+
+    if (location.pathname.startsWith("/admin/service-management")) {
+      setServicesDropdownOpen(true);
+    } else {
+      setServicesDropdownOpen(false);
     }
   }, [location.pathname]);
 
@@ -29,40 +36,94 @@ const AdminSidebar = ({ open }) => {
       <ul className="sidenav-menu">
         <li className="sidenav-item">
           <a
-            className={`sidenav-link${isActive("/admin/dashboard") ? " active" : ""}`}
+            className={`sidenav-link${
+              isActive("/admin/dashboard") ? " active" : ""
+            }`}
             href="/admin/dashboard"
           >
             <FaChartLine className="me-3" />
             Dashboard
           </a>
         </li>
+        {/* Bus Services Dropdown */}
         <li className="sidenav-item">
-          <a
-            className={`sidenav-link${isActive("/admin/services") ? " active" : ""}`}
-            href="/admin/services"
+          <div
+            className={`sidenav-link${
+              location.pathname.startsWith("/admin/service-management") ? " active" : ""
+            }`}
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+            onClick={() => setServicesDropdownOpen((open) => !open)}
           >
-            <GrSchedules className="me-3" />
-            Bus Services
-          </a>
+            <span>
+              <GrSchedules className="me-3" />
+              Bus Services
+            </span>
+            <span className="dropdown-arrow">
+              {servicesDropdownOpen ? "▲" : "▼"}
+            </span>
+          </div>
+          {servicesDropdownOpen && (
+            <ul className="sidebar-submenu">
+              <li>
+                <a
+                  className={`sidenav-link${
+                    isActive("/admin/service-management") ? " active" : ""
+                  }`}
+                  href="/admin/service-management"
+                >
+                  Manage Service
+                </a>
+              </li>
+              <li>
+                <a
+                  className={`sidenav-link${
+                    isActive("/admin/service-management/add") ? " active" : ""
+                  }`}
+                  href="/admin/service-management/add"
+                >
+                  Add Service
+                </a>
+              </li>
+            </ul>
+          )}
         </li>
+
         {/* Bus Management Dropdown */}
         <li className="sidenav-item">
           <div
-            className={`sidenav-link${location.pathname.startsWith("/admin/bus-management") ? " active" : ""}`}
-            style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+            className={`sidenav-link${
+              location.pathname.startsWith("/admin/bus-management")
+                ? " active"
+                : ""
+            }`}
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
             onClick={() => setBusDropdownOpen((open) => !open)}
           >
             <span>
               <FaBus className="me-3" />
               Bus Management
             </span>
-            <span className="dropdown-arrow">{busDropdownOpen ? "▲" : "▼"}</span>
+            <span className="dropdown-arrow">
+              {busDropdownOpen ? "▲" : "▼"}
+            </span>
           </div>
           {busDropdownOpen && (
             <ul className="sidebar-submenu">
               <li>
                 <a
-                  className={`sidenav-link${isActive("/admin/bus-management") ? " active" : ""}`}
+                  className={`sidenav-link${
+                    isActive("/admin/bus-management") ? " active" : ""
+                  }`}
                   href="/admin/bus-management"
                 >
                   Manage Bus
@@ -70,7 +131,9 @@ const AdminSidebar = ({ open }) => {
               </li>
               <li>
                 <a
-                  className={`sidenav-link${isActive("/admin/bus-management/add") ? " active" : ""}`}
+                  className={`sidenav-link${
+                    isActive("/admin/bus-management/add") ? " active" : ""
+                  }`}
                   href="/admin/bus-management/add"
                 >
                   Add Bus
@@ -81,7 +144,9 @@ const AdminSidebar = ({ open }) => {
         </li>
         <li className="sidenav-item">
           <a
-            className={`sidenav-link${isActive("/admin/destinations") ? " active" : ""}`}
+            className={`sidenav-link${
+              isActive("/admin/destinations") ? " active" : ""
+            }`}
             href="/admin/destinations"
           >
             <GrOrganization className="me-3" />
@@ -90,7 +155,9 @@ const AdminSidebar = ({ open }) => {
         </li>
         <li className="sidenav-item">
           <a
-            className={`sidenav-link${isActive("/admin/pickup-locations") ? " active" : ""}`}
+            className={`sidenav-link${
+              isActive("/admin/pickup-locations") ? " active" : ""
+            }`}
             href="/admin/pickup-locations"
           >
             <FaLocationDot className="me-3" />

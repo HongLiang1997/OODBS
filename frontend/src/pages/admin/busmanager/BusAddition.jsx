@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import "../../../styles/admin/admin-bus-addition.css";
+import "../../../styles/admin/busmanager/admin-bus-addition.css";
 
 export default function BusInsertAndBulkUpload() {
   const user = JSON.parse(localStorage.getItem("user"));

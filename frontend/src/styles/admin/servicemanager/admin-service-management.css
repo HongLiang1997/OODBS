@@ -1,0 +1,39 @@
+/* Service Management Page Styles */
+.service-management-container {
+  padding: 1rem;
+}
+
+.service-management-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 1rem;
+}
+
+.service-section {
+  margin-bottom: 2rem;
+}
+
+.service-section:last-child {
+  margin-bottom: 0;
+}
+
+.service-section-label {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid;
+}
+
+.upcoming-services-label {
+  color: #007bff;
+  border-bottom-color: #007bff;
+}
+
+.past-services-label {
+  color: #6c757d;
+  border-bottom-color: #6c757d;
+}

@@ -1,0 +1,19 @@
+.add-service-form{
+ font-size: 0.8rem;
+}
+
+.add-service-card h4 {
+  text-align: left;
+  align-self: flex-start;
+  margin-bottom: 1rem;
+}
+
+/* Ensure the card itself doesn't center-align content */
+.add-service-card {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.add-service-content{
+    padding: 1px;
+}

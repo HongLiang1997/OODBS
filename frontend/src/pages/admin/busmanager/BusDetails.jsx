@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import "../../../styles/admin/admin-bus-details.css";
+import "../../../styles/admin/busmanager/admin-bus-details.css";
 
 export default function BusDetailPage() {
   const { bus_id } = useParams();
