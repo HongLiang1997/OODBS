@@ -12,6 +12,9 @@ import BusDetail from "./pages/admin/busmanager/BusDetails";
 import ServiceManagement from "./pages/admin/servicemanager/ServiceManagement";
 import ServiceAddition from "./pages/admin/servicemanager/ServiceAddition";
 
+import DestinationManagement from "./pages/admin/destinationmanager/DestinationManagement";
+import DestinationAddition from "./pages/admin/destinationmanager/DestinationAddition";
+
 function App() {
   return (
     <BrowserRouter>
@@ -32,6 +35,9 @@ function App() {
             {/* Add more nested admin pages here */}
             <Route path="service-management" element={<ServiceManagement />} />
             <Route path="service-management/add" element={<ServiceAddition />} />
+
+            <Route path="destination-management" element={<DestinationManagement />} />
+            <Route path="destination-management/add" element={<DestinationAddition />} />
           </Route>
         </Route>
 

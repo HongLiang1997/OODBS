@@ -41,6 +41,9 @@ app.use('/services', servicesRouter);
 const pickupRouter = require('./routes/pickuplocation');
 app.use('/pickup-locations', pickupRouter);
 
+const destinationRouter = require('./routes/destination');
+app.use('/destinations', destinationRouter);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);

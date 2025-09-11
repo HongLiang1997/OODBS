@@ -75,7 +75,27 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    await pool.query(
+    console.log(`Checking for duplicate plate number: org=${organization_id}, plate=${plate_number}`);
+    
+    // Check if bus with same plate number already exists in the organization
+    const [existingBuses] = await pool.query(
+      `SELECT bus_id, plate_number
+       FROM bus 
+       WHERE organization_id = ? AND plate_number = ?
+       LIMIT 1`,
+      [organization_id, plate_number.trim()]
+    );
+    
+    console.log(`Found ${existingBuses.length} existing buses with plate number ${plate_number}`);
+    
+    if (existingBuses.length > 0) {
+      return res.status(200).json({ 
+        error: "Buses with these Plate Number already exists" 
+      });
+    }
+
+    console.log(`Inserting new bus with plate number: ${plate_number}`);
+    const [result] = await pool.query(
       `INSERT INTO Bus (
         organization_id,
         plate_number,
@@ -94,8 +114,11 @@ router.post("/", async (req, res) => {
         company
       ]
     );
+    
+    console.log(`Successfully inserted bus with ID: ${result.insertId}`);
     res.status(201).json({ message: "Bus created successfully" });
   } catch (err) {
+    console.error("Error in POST /buses:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

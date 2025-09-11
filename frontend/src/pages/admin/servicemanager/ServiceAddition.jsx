@@ -230,22 +230,7 @@ export default function ServiceAddition() {
         </div>
 
         {/* Bulk Upload */}
-        <div className="dashboard-card add-service-card mb-4 d-flex flex-column">
-          <h4 className="mb-3">Bulk Upload Services (CSV or XLSX)</h4>
-          <form onSubmit={handleBulkUploadSubmit}>
-            <div className="mb-3">
-              <input
-                type="file"
-                accept=".csv, .xlsx"
-                className="form-control"
-                onChange={handleFileChange}
-              />
-            </div>
-            <button type="submit" className="btn btn-secondary">
-              Upload File
-            </button>
-          </form>
-        </div>
+        
       </div>
     </div>
   );

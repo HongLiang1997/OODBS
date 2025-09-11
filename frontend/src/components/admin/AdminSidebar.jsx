@@ -9,6 +9,7 @@ const AdminSidebar = ({ open }) => {
   const navigate = useNavigate();
   const [busDropdownOpen, setBusDropdownOpen] = useState(false);
   const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
+  const [destinationsDropdownOpen, setDestinationsDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (location.pathname.startsWith("/admin/bus-management")) {
@@ -21,6 +22,12 @@ const AdminSidebar = ({ open }) => {
       setServicesDropdownOpen(true);
     } else {
       setServicesDropdownOpen(false);
+    }
+
+    if (location.pathname.startsWith("/admin/destination-management")) {
+      setDestinationsDropdownOpen(true);
+    } else {
+      setDestinationsDropdownOpen(false);
     }
   }, [location.pathname]);
 
@@ -142,17 +149,55 @@ const AdminSidebar = ({ open }) => {
             </ul>
           )}
         </li>
+        
+        {/* Destinations Management Dropdown */}
         <li className="sidenav-item">
-          <a
+          <div
             className={`sidenav-link${
-              isActive("/admin/destinations") ? " active" : ""
+              location.pathname.startsWith("/admin/destination-management") ? " active" : ""
             }`}
-            href="/admin/destinations"
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+            onClick={() => setDestinationsDropdownOpen((open) => !open)}
           >
-            <GrOrganization className="me-3" />
-            Destinations
-          </a>
+            <span>
+              <GrOrganization className="me-3" />
+              Destinations
+            </span>
+            <span className="dropdown-arrow">
+              {destinationsDropdownOpen ? "▲" : "▼"}
+            </span>
+          </div>
+          {destinationsDropdownOpen && (
+            <ul className="sidebar-submenu">
+              <li>
+                <a
+                  className={`sidenav-link${
+                    isActive("/admin/destination-management") ? " active" : ""
+                  }`}
+                  href="/admin/destination-management"
+                >
+                  Manage Destinations
+                </a>
+              </li>
+              <li>
+                <a
+                  className={`sidenav-link${
+                    isActive("/admin/destination-management/add") ? " active" : ""
+                  }`}
+                  href="/admin/destination-management/add"
+                >
+                  Add Destination
+                </a>
+              </li>
+            </ul>
+          )}
         </li>
+        
         <li className="sidenav-item">
           <a
             className={`sidenav-link${
