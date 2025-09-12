@@ -59,6 +59,11 @@
   grid-template-columns: 1fr 1fr 1fr 1fr 150px; /* 4 columns + actions */
 }
 
+.management-header[data-columns="5"],
+.management-row[data-columns="5"] {
+  grid-template-columns: 1.5fr 0.8fr 1fr 1fr 1.2fr 150px; /* 5 columns + actions */
+}
+
 .management-header[data-columns="6"],
 .management-row[data-columns="6"] {
   grid-template-columns: 1.2fr 1.5fr 1.2fr 1fr 1.2fr 1fr 150px; /* 6 columns + actions */

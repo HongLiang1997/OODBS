@@ -54,12 +54,21 @@ export default function ServiceManagement() {
     </span>
   );
 
-  // Custom render for shifts - display combined shifts
+  // Custom render for shifts - display combined shifts with styled badges
   const renderShifts = (service) => {
-    if (service.isAmShift && service.isPmShift) return "AM, PM";
-    if (service.isAmShift) return "AM";
-    if (service.isPmShift) return "PM";
-    return "None";
+    const hasAM = service.isAmShift;
+    const hasPM = service.isPmShift;
+    
+    if (!hasAM && !hasPM) {
+      return <span className="shift-badge none">None</span>;
+    }
+    
+    return (
+      <>
+        {hasAM && <span className="shift-badge am">AM</span>}
+        {hasPM && <span className="shift-badge pm">PM</span>}
+      </>
+    );
   };
 
   // Get shift value for editing (combines isAmShift and isPmShift into one value)

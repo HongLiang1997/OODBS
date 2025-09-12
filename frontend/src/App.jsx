@@ -15,6 +15,9 @@ import ServiceAddition from "./pages/admin/servicemanager/ServiceAddition";
 import DestinationManagement from "./pages/admin/destinationmanager/DestinationManagement";
 import DestinationAddition from "./pages/admin/destinationmanager/DestinationAddition";
 
+import PickupManagement from "./pages/admin/pickupmanager/PickupManagement";
+import PickupAddition from "./pages/admin/pickupmanager/PickupAddition";
+
 function App() {
   return (
     <BrowserRouter>
@@ -38,6 +41,9 @@ function App() {
 
             <Route path="destination-management" element={<DestinationManagement />} />
             <Route path="destination-management/add" element={<DestinationAddition />} />
+
+            <Route path="pickup-management" element={<PickupManagement />} />
+            <Route path="pickup-management/add" element={<PickupAddition />} />
           </Route>
         </Route>
 

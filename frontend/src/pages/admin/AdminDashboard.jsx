@@ -75,12 +75,19 @@ export default function AdminDashboard() {
     return `${day}/${month}/${year}`;
   };
 
-  // Format shifts
-  const formatShifts = (service) => {
-    if (service.isAmShift && service.isPmShift) return "AM, PM";
-    if (service.isAmShift) return "AM";
-    if (service.isPmShift) return "PM";
-    return "None";
+  // Format shifts with color-coded badges
+  const renderShifts = (service) => {
+    const shifts = [];
+    if (service.isAmShift) {
+      shifts.push(<span key="am" className="shift-badge am">AM</span>);
+    }
+    if (service.isPmShift) {
+      shifts.push(<span key="pm" className="shift-badge pm">PM</span>);
+    }
+    if (!service.isAmShift && !service.isPmShift) {
+      shifts.push(<span key="none" className="shift-badge none">None</span>);
+    }
+    return shifts.length > 0 ? shifts : <span className="shift-badge none">None</span>;
   };
 
   return (
@@ -194,7 +201,8 @@ export default function AdminDashboard() {
                             <strong>{service.plate_number}</strong>
                             <span className="bus-status">({formatDate(service.service_date)})</span>
                             <div className="bus-overview-meta">
-                              Location: {service.location_name} | Shifts: {formatShifts(service)}
+                              <div>Location: {service.location_name}</div>
+                              <div>Shifts: {renderShifts(service)}</div>
                             </div>
                           </div>
                           <span

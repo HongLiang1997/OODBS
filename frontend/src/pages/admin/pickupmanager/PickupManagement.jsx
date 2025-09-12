@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import ManagementTable from "../../../components/admin/AdminManagement";
 import "../../../styles/admin/admin-management.css";
-import "../../../styles/admin/destinationmanager/admin-destination-manager.css";
+import "../../../styles/admin/pickupmanager/admin-pickup-manager.css";
 import { FaMapMarkerAlt, FaTimes } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-export default function DestinationManagement() {
+export default function PickupManagement() {
   const user = JSON.parse(localStorage.getItem("user"));
   const orgId = user?.organization_id;
   const navigate = useNavigate();
@@ -80,27 +80,34 @@ export default function DestinationManagement() {
     }
   };
 
-  // Custom render for destination name (non-clickable)
-  const renderDestinationName = (destination) => (
-    <span className="destination-name">
-      {destination.name}
+  // Custom render for pickup location name (non-clickable)
+  const renderPickupLocationName = (pickupLocation) => (
+    <span className="pickup-location-name">
+      {pickupLocation.name}
+    </span>
+  );
+
+  // Custom render for pickup type
+  const renderPickupType = (pickupLocation) => (
+    <span className={`pickup-type-badge ${pickupLocation.type?.toLowerCase()}`}>
+      {pickupLocation.type || 'Public'}
     </span>
   );
 
   // Custom render for map button
-  const renderMapButton = (destination) => (
+  const renderMapButton = (pickupLocation) => (
     <button
-      className="btn destination-view-map-btn"
-      onClick={() => openMapModal(destination)}
-      title={`View ${destination.name} on map`}
+      className="btn pickup-view-map-btn"
+      onClick={() => openMapModal(pickupLocation)}
+      title={`View ${pickupLocation.name} on map`}
     >
-      <FaMapMarkerAlt className="destination-map-btn-icon" />
+      <FaMapMarkerAlt className="pickup-map-btn-icon" />
       View on Map
     </button>
   );
 
-  const openMapModal = (destination) => {
-    setSelectedLocation(destination);
+  const openMapModal = (pickupLocation) => {
+    setSelectedLocation(pickupLocation);
     setShowMapModal(true);
   };
 
@@ -112,25 +119,39 @@ export default function DestinationManagement() {
   return (
     <>
       <ManagementTable
-        fetchUrl={`http://localhost:5000/destinations/organization/${orgId}`}
-        updateUrl={(id) => `http://localhost:5000/destinations/${id}`}
-        deleteUrl={(id) => `http://localhost:5000/destinations/${id}`}
+        fetchUrl={`http://localhost:5000/pickup-locations/organization/${orgId}`}
+        updateUrl={(id) => `http://localhost:5000/pickup-locations/${id}`}
+        deleteUrl={(id) => `http://localhost:5000/pickup-locations/${id}`}
         searchFields={[
           "name",
+          "type",
           "latitude",
           "longitude",
         ]}
         statusOptions={[]}
-        itemLabel="Destination"
-        itemKey="location_id"
-        pageTitle="Destination Management"
+        itemLabel="Pickup Location"
+        itemKey="pickup_id"
+        pageTitle="Pickup Location Management"
         columns={[
           {
             key: "name",
-            label: "Destination Name",
+            label: "Pickup Location Name",
             editable: true,
             inputType: "text",
-            render: renderDestinationName,
+            render: renderPickupLocationName,
+          },
+          {
+            key: "type",
+            label: "Type",
+            editable: true,
+            inputType: "select",
+            options: [
+              { value: "Public", label: "Public" },
+              { value: "Private", label: "Private" },
+              { value: "School", label: "School" },
+              { value: "Office", label: "Office" },
+            ],
+            render: renderPickupType,
           },
           {
             key: "latitude",
@@ -157,12 +178,12 @@ export default function DestinationManagement() {
 
       {/* Map Modal */}
       {showMapModal && selectedLocation && (
-        <div className="modal fade show destination-map-modal">
+        <div className="modal fade show pickup-map-modal">
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  <FaMapMarkerAlt className="destination-modal-header-icon" />
+                  <FaMapMarkerAlt className="pickup-modal-header-icon" />
                   {selectedLocation.name} - Location Map
                 </h5>
                 <button
@@ -174,29 +195,29 @@ export default function DestinationManagement() {
                 </button>
               </div>
               <div className="modal-body">
-                <div className="destination-coordinates">
-                  <strong>Coordinates:</strong> {selectedLocation.latitude?.toFixed(6)}, {selectedLocation.longitude?.toFixed(6)}
+                <div className="pickup-coordinates">
+                  <strong>Type:</strong> {selectedLocation.type || 'Public'} | <strong>Coordinates:</strong> {selectedLocation.latitude?.toFixed(6)}, {selectedLocation.longitude?.toFixed(6)}
                 </div>
                 <div 
                   id="leaflet-map" 
-                  className="destination-map-container"
+                  className="pickup-map-container"
                 >
-                  <div className="destination-map-loading">
-                    <div className="spinner-border destination-map-spinner" role="status">
+                  <div className="pickup-map-loading">
+                    <div className="spinner-border pickup-map-spinner" role="status">
                       <span className="visually-hidden">Loading map...</span>
                     </div>
                   </div>
                 </div>
-                <div className="destination-map-actions">
+                <div className="pickup-map-actions">
                   <div className="row">
                     <div className="col-md-6">
                       <a
                         href={`https://www.openstreetmap.org/?mlat=${selectedLocation.latitude}&mlon=${selectedLocation.longitude}&zoom=15`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="destination-external-map-btn openstreetmap"
+                        className="pickup-external-map-btn openstreetmap"
                       >
-                        <FaMapMarkerAlt className="destination-map-btn-icon" />
+                        <FaMapMarkerAlt className="pickup-map-btn-icon" />
                         Open in OpenStreetMap
                       </a>
                     </div>
@@ -205,7 +226,7 @@ export default function DestinationManagement() {
                         href={`https://www.google.com/maps?q=${selectedLocation.latitude},${selectedLocation.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="destination-external-map-btn googlemaps"
+                        className="pickup-external-map-btn googlemaps"
                       >
                         Open in Google Maps
                       </a>

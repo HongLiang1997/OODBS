@@ -1,0 +1,165 @@
+/* Pickup Location Management Specific Styles */
+
+/* Pickup location name styling */
+.pickup-location-name {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+/* Pickup type badge styling */
+.pickup-type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.pickup-type-badge.public {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.pickup-type-badge.private {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.pickup-type-badge.school {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+.pickup-type-badge.office {
+  background-color: #e7e5e4;
+  color: #57534e;
+}
+
+/* Map modal specific styles */
+.pickup-map-modal {
+  display: block;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.pickup-map-container {
+  height: 400px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.pickup-map-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+/* Map coordinates display */
+.pickup-coordinates {
+  margin-bottom: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Map action buttons container */
+.pickup-map-actions {
+  margin-top: 1rem;
+}
+
+.pickup-map-actions .row {
+  align-items: center;
+}
+
+/* View on Map button styling */
+.pickup-view-map-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  border: 1px solid #3b82f6;
+  background-color: transparent;
+  color: #3b82f6;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.pickup-view-map-btn:hover {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+}
+
+.pickup-view-map-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+/* External map link buttons */
+.pickup-external-map-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.pickup-external-map-btn.openstreetmap {
+  background-color: #3b82f6;
+  color: white;
+  border: 1px solid #3b82f6;
+}
+
+.pickup-external-map-btn.openstreetmap:hover {
+  background-color: #2563eb;
+  border-color: #1d4ed8;
+  color: white;
+}
+
+.pickup-external-map-btn.googlemaps {
+  background-color: #6b7280;
+  color: white;
+  border: 1px solid #6b7280;
+}
+
+.pickup-external-map-btn.googlemaps:hover {
+  background-color: #4b5563;
+  border-color: #374151;
+  color: white;
+}
+
+/* Modal header icon spacing */
+.pickup-modal-header-icon {
+  margin-right: 0.5rem;
+}
+
+/* Map button icon spacing */
+.pickup-map-btn-icon {
+  margin-right: 0.25rem;
+}
+
+/* Loading spinner for map */
+.pickup-map-spinner {
+  color: #3b82f6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pickup-map-container {
+    height: 300px;
+  }
+  
+  .pickup-map-actions .col-md-6 {
+    margin-bottom: 0.5rem;
+  }
+  
+  .pickup-external-map-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

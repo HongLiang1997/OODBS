@@ -8,6 +8,59 @@ export default function BusDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [services, setServices] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [showUpcoming, setShowUpcoming] = useState(true);
+  const [showUpcomingSchedule, setShowUpcomingSchedule] = useState(true);
+  const [showRouteModal, setShowRouteModal] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [routes, setRoutes] = useState([]);
+
+  // Filter services based on current date
+  const getFilteredServices = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+    
+    return services.filter((service) => {
+      const serviceDate = new Date(service.service_date);
+      serviceDate.setHours(0, 0, 0, 0);
+      
+      if (showUpcoming) {
+        return serviceDate >= today; // Today and future dates
+      } else {
+        return serviceDate < today; // Past dates
+      }
+    });
+  };
+
+  // Filter schedules based on current date
+  const getFilteredSchedules = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return schedules.filter((schedule) => {
+      const scheduleDate = new Date(schedule.service_date);
+      scheduleDate.setHours(0, 0, 0, 0);
+      
+      if (showUpcomingSchedule) {
+        return scheduleDate >= today;
+      } else {
+        return scheduleDate < today;
+      }
+    });
+  };
+
+  // Handle schedule click to show routes
+  const handleScheduleClick = async (schedule) => {
+    try {
+      const response = await fetch(`http://localhost:5000/schedule/${schedule.schedule_id}/routes`);
+      const routeData = await response.json();
+      setRoutes(routeData);
+      setSelectedSchedule(schedule);
+      setShowRouteModal(true);
+    } catch (error) {
+      console.error("Error fetching routes:", error);
+    }
+  };
 
   useEffect(() => {
     if (!bus_id) return;
@@ -15,6 +68,12 @@ export default function BusDetailPage() {
       .then((res) => res.json())
       .then((data) => setServices(data))
       .catch(() => setServices([]));
+
+    // Fetch schedules
+    fetch(`http://localhost:5000/schedule/bus/${bus_id}`)
+      .then((res) => res.json())
+      .then((data) => setSchedules(data))
+      .catch(() => setSchedules([]));
   }, [bus_id]);
 
   useEffect(() => {
@@ -98,6 +157,26 @@ export default function BusDetailPage() {
           <div className="col-md-6 mb-4">
             <div className="dashboard-card d-flex flex-column">
               <h5 className="mb-3">Services Shift</h5>
+              <div className="services-toggle mb-3" role="group">
+                <button
+                  type="button"
+                  className={`btn ${
+                    showUpcoming ? "btn-primary" : "btn-outline-primary"
+                  }`}
+                  onClick={() => setShowUpcoming(true)}
+                >
+                  Upcoming
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${
+                    !showUpcoming ? "btn-primary" : "btn-outline-primary"
+                  }`}
+                  onClick={() => setShowUpcoming(false)}
+                >
+                  Past
+                </button>
+              </div>
               <div>
                 <table className="bus-shift-table">
                   <thead>
@@ -108,30 +187,51 @@ export default function BusDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {services.length === 0 ? (
-                      <tr>
-                        <td colSpan={3} className="text-center">
-                          No services found.
-                        </td>
-                      </tr>
-                    ) : (
-                      services.map((svc, idx) => (
-                        <tr key={idx}>
-                          <td>{svc.location_name}</td>
-                          <td>
-                            {new Date(svc.service_date).toLocaleDateString()}
-                          </td>
-                          <td>
-                            {svc.isAmShift || svc.isamshift ? "Am" : ""}
-                            {(svc.isAmShift || svc.isamshift) &&
-                            (svc.isPmShift || svc.ispmshift)
-                              ? ", "
-                              : ""}
-                            {svc.isPmShift || svc.ispmshift ? "Pm" : ""}
+                    {(() => {
+                      const filteredServices = getFilteredServices();
+                      return filteredServices.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="empty-state">
+                            {showUpcoming 
+                              ? "No upcoming services found." 
+                              : "No past services found."
+                            }
                           </td>
                         </tr>
-                      ))
-                    )}
+                      ) : (
+                        filteredServices
+                          .sort((a, b) => {
+                            const dateA = new Date(a.service_date);
+                            const dateB = new Date(b.service_date);
+                            return showUpcoming ? dateA - dateB : dateB - dateA;
+                          })
+                          .map((svc, idx) => (
+                            <tr key={idx}>
+                              <td className="location-name">{svc.location_name}</td>
+                              <td className="service-date">
+                                {new Date(svc.service_date).toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </td>
+                              <td>
+                                {(svc.isAmShift === 1 || svc.isAmShift === true || svc.isamshift === 1 || svc.isamshift === true) && (
+                                  <span className="shift-badge am">AM</span>
+                                )}
+                                {(svc.isPmShift === 1 || svc.isPmShift === true || svc.ispmshift === 1 || svc.ispmshift === true) && (
+                                  <span className="shift-badge pm">PM</span>
+                                )}
+                                {!(svc.isAmShift === 1 || svc.isAmShift === true || svc.isamshift === 1 || svc.isamshift === true || 
+                                   svc.isPmShift === 1 || svc.isPmShift === true || svc.ispmshift === 1 || svc.ispmshift === true) && (
+                                  <span className="text-muted">No shifts</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -141,13 +241,169 @@ export default function BusDetailPage() {
           <div className="col-md-6 mb-4">
             <div className="dashboard-card d-flex flex-column">
               <h5 className="mb-3">Schedule</h5>
+              <p className="mb-3 text-muted" style={{ fontSize: '0.9rem', fontStyle: 'italic' }}>
+                Click on any schedule row to view route details
+              </p>
+              <div className="services-toggle mb-3" role="group">
+                <button
+                  type="button"
+                  className={`btn ${
+                    showUpcomingSchedule ? "btn-primary" : "btn-outline-primary"
+                  }`}
+                  onClick={() => setShowUpcomingSchedule(true)}
+                >
+                  Upcoming
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${
+                    !showUpcomingSchedule ? "btn-primary" : "btn-outline-primary"
+                  }`}
+                  onClick={() => setShowUpcomingSchedule(false)}
+                >
+                  Past
+                </button>
+              </div>
               <div>
-                <p>Put your content here.</p>
+                <table className="bus-shift-table">
+                  <thead>
+                    <tr>
+                      <th>Pickup Location</th>
+                      <th>Departure</th>
+                      <th>Arrival</th>
+                      <th>Shifts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const filteredSchedules = getFilteredSchedules();
+                      return filteredSchedules.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="empty-state">
+                            {showUpcomingSchedule 
+                              ? "No upcoming schedules found." 
+                              : "No past schedules found."
+                            }
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredSchedules
+                          .sort((a, b) => {
+                            const dateA = new Date(a.departure_time);
+                            const dateB = new Date(b.departure_time);
+                            return showUpcomingSchedule ? dateA - dateB : dateB - dateA;
+                          })
+                          .map((schedule, idx) => (
+                            <tr 
+                              key={idx} 
+                              onClick={() => handleScheduleClick(schedule)}
+                              style={{ cursor: 'pointer' }}
+                              className="schedule-row"
+                            >
+                              <td className="location-name">{schedule.pickup_location_name}</td>
+                              <td className="service-date">
+                                {new Date(schedule.departure_time).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </td>
+                              <td className="service-date">
+                                {new Date(schedule.arrival_time).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </td>
+                              <td>
+                                {(schedule.isAmShift === 1 || schedule.isAmShift === true) && (
+                                  <span className="shift-badge am">AM</span>
+                                )}
+                                {(schedule.isPmShift === 1 || schedule.isPmShift === true) && (
+                                  <span className="shift-badge pm">PM</span>
+                                )}
+                                {!(schedule.isAmShift === 1 || schedule.isAmShift === true || 
+                                   schedule.isPmShift === 1 || schedule.isPmShift === true) && (
+                                  <span className="text-muted">No shifts</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                      );
+                    })()}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Route Details Modal */}
+      {showRouteModal && (
+        <div className="modal-overlay" onClick={() => setShowRouteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h4>Route Details</h4>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowRouteModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              {selectedSchedule && (
+                <div className="schedule-info mb-3">
+                  <p><strong>Pickup Location:</strong> {selectedSchedule.pickup_location_name}</p>
+                  <p><strong>Departure:</strong> {new Date(selectedSchedule.departure_time).toLocaleString()}</p>
+                  <p><strong>Arrival:</strong> {new Date(selectedSchedule.arrival_time).toLocaleString()}</p>
+                </div>
+              )}
+              <table className="routes-table">
+                <thead>
+                  <tr>
+                    <th>Stop Order</th>
+                    <th>Destination</th>
+                    <th>Passenger (Count)</th>
+                    <th>Tier</th>
+                    <th>ETA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {routes.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="empty-state">
+                        No routes found for this schedule.
+                      </td>
+                    </tr>
+                  ) : (
+                    routes.map((route, idx) => (
+                      <tr key={idx}>
+                        <td className="stop-order">{route.stop_order}</td>
+                        <td className="destination-name">{route.destination_name || 'N/A'}</td>
+                        <td className="passenger-info">
+                          {route.passenger_name || 'N/A'}
+                          {route.passenger_count && ` (${route.passenger_count})`}
+                        </td>
+                        <td className="tier-name">{route.tier_name || 'N/A'}</td>
+                        <td className="eta-time">
+                          {route.eta ? new Date(route.eta).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : 'N/A'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

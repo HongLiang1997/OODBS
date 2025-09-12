@@ -10,6 +10,7 @@ const AdminSidebar = ({ open }) => {
   const [busDropdownOpen, setBusDropdownOpen] = useState(false);
   const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
   const [destinationsDropdownOpen, setDestinationsDropdownOpen] = useState(false);
+  const [pickupDropdownOpen, setPickupDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (location.pathname.startsWith("/admin/bus-management")) {
@@ -28,6 +29,12 @@ const AdminSidebar = ({ open }) => {
       setDestinationsDropdownOpen(true);
     } else {
       setDestinationsDropdownOpen(false);
+    }
+
+    if (location.pathname.startsWith("/admin/pickup-management")) {
+      setPickupDropdownOpen(true);
+    } else {
+      setPickupDropdownOpen(false);
     }
   }, [location.pathname]);
 
@@ -198,16 +205,52 @@ const AdminSidebar = ({ open }) => {
           )}
         </li>
         
+        {/* Pickup Locations Management Dropdown */}
         <li className="sidenav-item">
-          <a
+          <div
             className={`sidenav-link${
-              isActive("/admin/pickup-locations") ? " active" : ""
+              location.pathname.startsWith("/admin/pickup-management") ? " active" : ""
             }`}
-            href="/admin/pickup-locations"
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+            onClick={() => setPickupDropdownOpen((open) => !open)}
           >
-            <FaLocationDot className="me-3" />
-            Pick-up Locations
-          </a>
+            <span>
+              <FaLocationDot className="me-3" />
+              Pick-up Locations
+            </span>
+            <span className="dropdown-arrow">
+              {pickupDropdownOpen ? "▲" : "▼"}
+            </span>
+          </div>
+          {pickupDropdownOpen && (
+            <ul className="sidebar-submenu">
+              <li>
+                <a
+                  className={`sidenav-link${
+                    isActive("/admin/pickup-management") ? " active" : ""
+                  }`}
+                  href="/admin/pickup-management"
+                >
+                  Manage Pick-up Locations
+                </a>
+              </li>
+              <li>
+                <a
+                  className={`sidenav-link${
+                    isActive("/admin/pickup-management/add") ? " active" : ""
+                  }`}
+                  href="/admin/pickup-management/add"
+                >
+                  Add Pick-up Location
+                </a>
+              </li>
+            </ul>
+          )}
         </li>
       </ul>
       <button className="sidebar-logout-btn" onClick={handleLogout}>

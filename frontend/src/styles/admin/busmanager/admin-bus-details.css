@@ -7,6 +7,65 @@
   margin-bottom: 2rem;
 }
 
+/* Services card header styling */
+.services-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.services-header h5 {
+  margin: 0;
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+/* Toggle button group styling */
+.services-toggle {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 2px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.services-toggle .btn {
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin: 0;
+  background: transparent;
+  color: #6b7280;
+}
+
+.services-toggle .btn:first-child {
+  margin-right: 2px;
+}
+
+.services-toggle .btn.btn-primary {
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.services-toggle .btn.btn-outline-primary {
+  background: transparent;
+  color: #6b7280;
+  border: none;
+}
+
+.services-toggle .btn.btn-outline-primary:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 /* Table styling */
 .bus-details-table,
 .bus-shift-table {
@@ -20,12 +79,17 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
 }
 
+.bus-shift-table {
+  margin-top: 0.5rem;
+}
+
 .bus-details-table th,
 .bus-details-table td,
 .bus-shift-table th,
 .bus-shift-table td {
-  padding: 0.75rem 1.2rem;
+  padding: 0.875rem 1.25rem;
   border-bottom: 1px solid #e5e7eb;
+  text-align: left;
 }
 
 .bus-details-table th {
@@ -41,19 +105,72 @@
 }
 
 .bus-shift-table th {
-  background: #f1f5f9;
-  color: #374151;
+  background: #f8fafc;
+  color: #475569;
   font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  padding: 0.75rem 1.25rem;
 }
 
 .bus-shift-table td {
   background: #fff;
-  color: #23272f;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.bus-shift-table tr:hover td {
+  background: #f8fafc;
 }
 
 .bus-shift-table tr:last-child td,
 .bus-details-table tr:last-child td {
   border-bottom: none;
+}
+
+/* Empty state styling */
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Shift badges */
+.shift-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin: 0 0.125rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.shift-badge.am {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.shift-badge.pm {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+/* Date styling */
+.service-date {
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Location name styling */
+.location-name {
+  font-weight: 500;
+  color: #1f2937;
 }
 
 /* Status pill styling */
@@ -82,4 +199,159 @@
 .bus-status-pill.enroute {
   background: #e6f0ff;
   color: #007bff;
+}
+
+/* Schedule row hover effect */
+.schedule-row:hover {
+  background: #f0f9ff !important;
+  cursor: pointer;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1050;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-header h4 {
+  margin: 0;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+.schedule-info {
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.schedule-info p {
+  margin: 0.5rem 0;
+  color: #374151;
+}
+
+.schedule-info strong {
+  color: #1f2937;
+}
+
+/* Routes Table Styles */
+.routes-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #f9fafb;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.routes-table th,
+.routes-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.routes-table th {
+  background: #f1f5f9;
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.routes-table td {
+  background: #fff;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.routes-table tr:hover td {
+  background: #f8fafc;
+}
+
+.routes-table tr:last-child td {
+  border-bottom: none;
+}
+
+.stop-order {
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  width: 80px;
+}
+
+.destination-name {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.passenger-info {
+  color: #374151;
+}
+
+.tier-name {
+  font-weight: 500;
+  color: #6366f1;
+}
+
+.eta-time {
+  font-family: monospace;
+  color: #059669;
+  font-weight: 500;
 }

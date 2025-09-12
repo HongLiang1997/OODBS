@@ -140,6 +140,35 @@
   color: #ffc107;
 }
 
+/* Shift Badge Styles */
+.shift-badge {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+  margin: 0 0.1em;
+  text-transform: uppercase;
+}
+
+.shift-badge.am {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.shift-badge.pm {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.shift-badge.none {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+}
+
 .horizontal-search-filter {
   display: flex;
   gap: 1rem;

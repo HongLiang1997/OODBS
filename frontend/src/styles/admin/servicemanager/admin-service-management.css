@@ -33,3 +33,33 @@
   color: #6c757d;
   border-bottom-color: #6c757d;
 }
+
+/* Shift badges styling */
+.shift-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin: 0 0.125rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.shift-badge.am {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.shift-badge.pm {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.shift-badge.none {
+  background: #f3f4f6;
+  color: #6b7280;
+  text-transform: none;
+}

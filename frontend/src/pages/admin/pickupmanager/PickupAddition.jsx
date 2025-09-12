@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import "../../../styles/admin/busmanager/admin-bus-addition.css";
-import "../../../styles/admin/destinationmanager/admin-destination-addition.css";
+import "../../../styles/admin/pickupmanager/admin-pickup-addition.css";
 import { FaMapMarkerAlt, FaSearch, FaEye, FaUpload, FaFileExcel } from "react-icons/fa";
 
-export default function DestinationAddition() {
+export default function PickupAddition() {
   const user = JSON.parse(localStorage.getItem("user"));
 
-  const [newDestination, setNewDestination] = useState({
+  const [newPickupLocation, setNewPickupLocation] = useState({
     name: "",
+    type: "Public",
     latitude: "",
     longitude: "",
   });
@@ -23,7 +24,7 @@ export default function DestinationAddition() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewDestination((prev) => ({ ...prev, [name]: value }));
+    setNewPickupLocation((prev) => ({ ...prev, [name]: value }));
   };
 
   // Geocoding function to search for location (Singapore only)
@@ -46,7 +47,7 @@ export default function DestinationAddition() {
 
       if (data && data.length > 0) {
         const location = data[0];
-        setNewDestination((prev) => ({
+        setNewPickupLocation((prev) => ({
           ...prev,
           latitude: location.lat,
           longitude: location.lon,
@@ -84,41 +85,66 @@ export default function DestinationAddition() {
 
   // Initialize map preview
   const initializeMap = async () => {
-    if (!newDestination.latitude || !newDestination.longitude) return;
+    if (!newPickupLocation.latitude || !newPickupLocation.longitude) {
+      console.log('No coordinates available for map');
+      return;
+    }
 
+    console.log('Loading Leaflet...');
     await loadLeaflet();
     
     const mapContainer = document.getElementById("previewMap");
+    if (!mapContainer) {
+      console.error('Map container not found');
+      return;
+    }
+
+    console.log('Initializing map with coordinates:', newPickupLocation.latitude, newPickupLocation.longitude);
+    
+    // Clear any existing map
     if (mapContainer._leaflet_id) {
       mapContainer._leaflet_id = null;
     }
     mapContainer.innerHTML = "";
 
-    const map = window.L.map("previewMap").setView(
-      [parseFloat(newDestination.latitude), parseFloat(newDestination.longitude)], 
-      15
-    );
+    try {
+      const map = window.L.map("previewMap").setView(
+        [parseFloat(newPickupLocation.latitude), parseFloat(newPickupLocation.longitude)], 
+        15
+      );
 
-    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+      window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
 
-    window.L.marker([parseFloat(newDestination.latitude), parseFloat(newDestination.longitude)])
-      .addTo(map)
-      .bindPopup(newDestination.name || "Selected Location")
-      .openPopup();
+      window.L.marker([parseFloat(newPickupLocation.latitude), parseFloat(newPickupLocation.longitude)])
+        .addTo(map)
+        .bindPopup(newPickupLocation.name || "Selected Location")
+        .openPopup();
 
-    setMapLoaded(true);
+      setMapLoaded(true);
+      console.log('Map initialized successfully');
+    } catch (error) {
+      console.error('Error initializing map:', error);
+      mapContainer.innerHTML = '<div class="alert alert-danger">Error loading map. Please try again.</div>';
+    }
   };
 
   // Show map preview
   const showMapPreview = async () => {
-    if (!newDestination.latitude || !newDestination.longitude) {
+    if (!newPickupLocation.latitude || !newPickupLocation.longitude) {
       alert("Please set coordinates first.");
       return;
     }
+
+    console.log('Opening map preview modal');
     setShowPreview(true);
-    setTimeout(initializeMap, 100); // Small delay to ensure modal is rendered
+    
+    // Wait for modal to render, then initialize map
+    setTimeout(() => {
+      console.log('Initializing map after modal render');
+      initializeMap();
+    }, 200); // Increased delay to ensure modal is fully rendered
   };
 
   // Load XLSX library dynamically
@@ -137,25 +163,31 @@ export default function DestinationAddition() {
 
   // Dynamic column detection function
   const detectColumns = (headers) => {
-    console.log('Headers received:', headers); // Debug log
-    console.log('Headers length:', headers.length); // Debug log
+    console.log('Headers received:', headers);
     
     const columnMap = {
       name: null,
+      type: null,
       latitude: null,
       longitude: null
     };
 
     headers.forEach((header, index) => {
-      if (!header) return; // Skip empty headers
+      if (!header) return;
       
       const headerStr = header.toString().trim().toLowerCase();
-      console.log(`Checking header "${header}" -> "${headerStr}" at index ${index}`); // Debug log
+      console.log(`Checking header "${header}" -> "${headerStr}" at index ${index}`);
       
-      // Check for name column (more flexible)
-      if ((headerStr.includes('name') || headerStr.includes('hotel') || headerStr.includes('destination') || headerStr.includes('location') || headerStr.includes('place')) && columnMap.name === null) {
+      // Check for name column
+      if ((headerStr.includes('name') || headerStr.includes('pickup') || headerStr.includes('location') || headerStr.includes('place')) && columnMap.name === null) {
         columnMap.name = index;
         console.log(`Name column found at index ${index}: "${header}"`);
+      }
+      
+      // Check for type column
+      if ((headerStr.includes('type') || headerStr.includes('category')) && columnMap.type === null) {
+        columnMap.type = index;
+        console.log(`Type column found at index ${index}: "${header}"`);
       }
       
       // Check for latitude column
@@ -164,14 +196,14 @@ export default function DestinationAddition() {
         console.log(`Latitude column found at index ${index}: "${header}"`);
       }
       
-      // Check for longitude column (including common typos)
+      // Check for longitude column
       if ((headerStr === 'lng' || headerStr === 'lon' || headerStr === 'long' || headerStr === 'longitude' || headerStr === 'longtitude') && columnMap.longitude === null) {
         columnMap.longitude = index;
         console.log(`Longitude column found at index ${index}: "${header}"`);
       }
     });
 
-    console.log('Final column map:', columnMap); // Debug log
+    console.log('Final column map:', columnMap);
     return columnMap;
   };
 
@@ -207,9 +239,10 @@ export default function DestinationAddition() {
 
       if (columnMap.name === null || columnMap.latitude === null || columnMap.longitude === null) {
         alert(`Could not detect required columns. Please ensure your file has columns for:
-        - Name (containing 'name', 'hotel', 'destination', etc.)
+        - Name (containing 'name', 'pickup', 'location', etc.)
         - Latitude (containing 'lat', 'latitude')
-        - Longitude (containing 'lng', 'lon', 'long', 'longitude')`);
+        - Longitude (containing 'lng', 'lon', 'long', 'longitude')
+        - Type (optional - containing 'type', 'category')`);
         return;
       }
 
@@ -218,6 +251,7 @@ export default function DestinationAddition() {
       for (let i = 1; i < jsonData.length; i++) {
         const row = jsonData[i];
         const name = row[columnMap.name];
+        const type = columnMap.type !== null ? row[columnMap.type] : 'Public';
         const lat = parseFloat(row[columnMap.latitude]);
         const lng = parseFloat(row[columnMap.longitude]);
 
@@ -232,6 +266,7 @@ export default function DestinationAddition() {
 
         processedData.push({
           name: name.toString(),
+          type: type ? type.toString() : 'Public',
           latitude: lat,
           longitude: lng,
           status: 'pending'
@@ -260,20 +295,21 @@ export default function DestinationAddition() {
     let errorCount = 0;
 
     for (let i = 0; i < bulkData.length; i++) {
-      const destination = bulkData[i];
+      const pickupLocation = bulkData[i];
       
       // Skip if already processed
-      if (destination.status !== 'pending') continue;
+      if (pickupLocation.status !== 'pending') continue;
       
       try {
         const payload = {
-          name: destination.name,
-          latitude: destination.latitude,
-          longitude: destination.longitude,
+          name: pickupLocation.name,
+          type: pickupLocation.type,
+          latitude: pickupLocation.latitude,
+          longitude: pickupLocation.longitude,
           organization_id: user.organization_id,
         };
 
-        const res = await fetch("http://localhost:5000/destinations", {
+        const res = await fetch("http://localhost:5000/pickup-locations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -303,21 +339,21 @@ export default function DestinationAddition() {
     alert(`Upload completed!\nSuccess: ${successCount}\nErrors: ${errorCount}`);
   };
 
-  const handleNewDestinationSubmit = async (e) => {
+  const handleNewPickupLocationSubmit = async (e) => {
     e.preventDefault();
 
     if (
-      !newDestination.name ||
-      !newDestination.latitude ||
-      !newDestination.longitude
+      !newPickupLocation.name ||
+      !newPickupLocation.latitude ||
+      !newPickupLocation.longitude
     ) {
-      alert("Please fill all fields.");
+      alert("Please fill all required fields.");
       return;
     }
 
     // Validate coordinates
-    const lat = parseFloat(newDestination.latitude);
-    const lng = parseFloat(newDestination.longitude);
+    const lat = parseFloat(newPickupLocation.latitude);
+    const lng = parseFloat(newPickupLocation.longitude);
     
     if (isNaN(lat) || isNaN(lng)) {
       alert("Please enter valid latitude and longitude values.");
@@ -335,78 +371,76 @@ export default function DestinationAddition() {
     }
 
     const payload = {
-      ...newDestination,
+      ...newPickupLocation,
       latitude: lat,
       longitude: lng,
       organization_id: user.organization_id,
     };
 
     try {
-      const res = await fetch("http://localhost:5000/destinations", {
+      const res = await fetch("http://localhost:5000/pickup-locations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        alert("Destination added successfully!");
-        setNewDestination({
+        alert("Pickup location added successfully!");
+        setNewPickupLocation({
           name: "",
+          type: "Public",
           latitude: "",
           longitude: "",
         });
       } else {
         const data = await res.json();
-        alert(`Error: ${data.error || "Failed to add destination"}`);
+        alert(`Error: ${data.error || "Failed to add pickup location"}`);
       }
     } catch (err) {
       alert(`Error: ${err.message}`);
     }
   };
 
-  // Function to get current location
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setNewDestination((prev) => ({
-            ...prev,
-            latitude: position.coords.latitude.toString(),
-            longitude: position.coords.longitude.toString(),
-          }));
-        },
-        (error) => {
-          alert("Error getting location: " + error.message);
-        }
-      );
-    } else {
-      alert("Geolocation is not supported by this browser.");
-    }
-  };
-
   return (
     <div>
       <div className="page-title">
-        <h3>Destination Addition</h3>
+        <h3>Pickup Location Addition</h3>
       </div>
       <div className="page-content add-bus-content">
         <div className="dashboard-card add-bus-card mb-4 d-flex flex-column">
-          <h4 className="mb-3">Add New Destination</h4>
-          <form className="add-bus-form" onSubmit={handleNewDestinationSubmit}>
+          <h4 className="mb-3">Add New Pickup Location</h4>
+          <form className="add-bus-form" onSubmit={handleNewPickupLocationSubmit}>
             <div className="row g-3">
-              <div className="col-md-12">
+              <div className="col-md-8">
                 <label htmlFor="name" className="form-label">
-                  Destination Name
+                  Pickup Location Name
                 </label>
                 <input
                   type="text"
                   id="name"
                   name="name"
                   className="form-control"
-                  value={newDestination.name}
+                  value={newPickupLocation.name}
                   onChange={handleInputChange}
-                  placeholder="e.g., Main Campus, Library, Sports Complex"
+                  placeholder="e.g., Changi Airport T3, Raffles Bus Stop"
                   required
                 />
+              </div>
+              <div className="col-md-4">
+                <label htmlFor="type" className="form-label">
+                  Location Type
+                </label>
+                <select
+                  id="type"
+                  name="type"
+                  className="form-control"
+                  value={newPickupLocation.type}
+                  onChange={handleInputChange}
+                >
+                  <option value="Public">Public</option>
+                  <option value="Private">Private</option>
+                  <option value="School">School</option>
+                  <option value="Office">Office</option>
+                </select>
               </div>
             </div>
 
@@ -415,35 +449,35 @@ export default function DestinationAddition() {
                 <label htmlFor="searchQuery" className="form-label">
                   Search Location by Name
                 </label>
-                <div className="input-group destination-input-group">
+                <div className="input-group pickup-input-group">
                   <input
                     type="text"
                     id="searchQuery"
                     className="form-control"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="e.g., Orchard Road, Marina Bay Sands, NUS"
+                    placeholder="e.g., Changi Airport, Marina Bay Sands, NUS"
                   />
                   <button
                     type="button"
-                    className="btn btn-outline-primary destination-search-btn"
+                    className="btn btn-outline-primary pickup-search-btn"
                     onClick={searchLocation}
                     disabled={isSearching}
                   >
                     {isSearching ? (
                       <>
-                        <span className="spinner-border destination-loading-spinner" role="status" aria-hidden="true"></span>
+                        <span className="spinner-border pickup-loading-spinner" role="status" aria-hidden="true"></span>
                         Searching...
                       </>
                     ) : (
                       <>
-                        <FaSearch className="destination-btn-icon" />
+                        <FaSearch className="pickup-btn-icon" />
                         Search
                       </>
                     )}
                   </button>
                 </div>
-                <small className="destination-form-helper">
+                <small className="pickup-form-helper">
                   Search for any location in Singapore to automatically get coordinates
                 </small>
               </div>
@@ -460,9 +494,9 @@ export default function DestinationAddition() {
                   id="latitude"
                   name="latitude"
                   className="form-control"
-                  value={newDestination.latitude}
+                  value={newPickupLocation.latitude}
                   onChange={handleInputChange}
-                  placeholder="e.g., 3.1390"
+                  placeholder="e.g., 1.3644"
                   required
                 />
               </div>
@@ -476,40 +510,40 @@ export default function DestinationAddition() {
                   id="longitude"
                   name="longitude"
                   className="form-control"
-                  value={newDestination.longitude}
+                  value={newPickupLocation.longitude}
                   onChange={handleInputChange}
-                  placeholder="e.g., 101.6869"
+                  placeholder="e.g., 103.9915"
                   required
                 />
               </div>
               <div className="col-md-2 d-flex align-items-end">
                 <button
                   type="button"
-                  className="btn btn-outline-success destination-preview-btn"
+                  className="btn btn-outline-success pickup-preview-btn"
                   onClick={showMapPreview}
-                  disabled={!newDestination.latitude || !newDestination.longitude}
+                  disabled={!newPickupLocation.latitude || !newPickupLocation.longitude}
                   title="Preview location on map"
                 >
-                  <FaEye className="destination-btn-icon" />
+                  <FaEye className="pickup-btn-icon" />
                   Preview
                 </button>
               </div>
             </div>
 
-            {newDestination.latitude && newDestination.longitude && (
+            {newPickupLocation.latitude && newPickupLocation.longitude && (
               <div className="row g-3 mt-2">
                 <div className="col-12">
-                  <div className="destination-coordinates-preview">
-                    <FaMapMarkerAlt className="destination-icon" />
-                    <strong>Preview:</strong> {newDestination.name || "Destination"} will be located at{" "}
-                    {parseFloat(newDestination.latitude).toFixed(6)}, {parseFloat(newDestination.longitude).toFixed(6)}
+                  <div className="pickup-coordinates-preview">
+                    <FaMapMarkerAlt className="pickup-icon" />
+                    <strong>Preview:</strong> {newPickupLocation.name || "Pickup Location"} ({newPickupLocation.type}) will be located at{" "}
+                    {parseFloat(newPickupLocation.latitude).toFixed(6)}, {parseFloat(newPickupLocation.longitude).toFixed(6)}
                   </div>
                 </div>
               </div>
             )}
 
             <button type="submit" className="btn btn-primary mt-4">
-              Add Destination
+              Add Pickup Location
             </button>
           </form>
         </div>
@@ -517,7 +551,7 @@ export default function DestinationAddition() {
         {/* Bulk Upload Card */}
         <div className="dashboard-card add-bus-card mb-4 d-flex flex-column">
           <h4 className="mb-3">
-            <FaFileExcel className="destination-btn-icon" />
+            <FaFileExcel className="pickup-btn-icon" />
             Bulk Upload from Excel
           </h4>
           
@@ -534,22 +568,22 @@ export default function DestinationAddition() {
                 onChange={handleFileUpload}
                 disabled={isUploading}
               />
-              <small className="destination-file-helper">
-                File should contain columns for Name, Latitude, and Longitude
+              <small className="pickup-file-helper">
+                File should contain columns for Name, Type (optional), Latitude, and Longitude
               </small>
             </div>
           </div>
 
           {isUploading && (
-            <div className="destination-upload-progress">
-              <div className="spinner-border destination-upload-spinner" role="status"></div>
-              <span className="destination-loading-text">Processing file...</span>
+            <div className="pickup-upload-progress">
+              <div className="spinner-border pickup-upload-spinner" role="status"></div>
+              <span className="pickup-loading-text">Processing file...</span>
             </div>
           )}
 
           {bulkData.length > 0 && (
-            <div className="destination-ready-upload">
-              <strong>Ready to upload:</strong> {bulkData.length} destinations found
+            <div className="pickup-ready-upload">
+              <strong>Ready to upload:</strong> {bulkData.length} pickup locations found
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => setShowBulkPreview(true)}
@@ -562,18 +596,18 @@ export default function DestinationAddition() {
 
         {/* Information Card */}
         <div className="dashboard-card add-bus-card mb-4 d-flex flex-column">
-          <h4 className="mb-3">Location Search Guidelines</h4>
-          <div className="destination-guidelines-card">
-            <h6 className="destination-guidelines-title">How to find your destination in Singapore:</h6>
-            <ul className="destination-guidelines-list">
-              <li>Search with specific Singapore locations (e.g., "Marina Bay Sands", "Orchard Road")</li>
+          <h4 className="mb-3">Pickup Location Guidelines</h4>
+          <div className="pickup-guidelines-card">
+            <h6 className="pickup-guidelines-title">How to find pickup locations in Singapore:</h6>
+            <ul className="pickup-guidelines-list">
+              <li>Search with specific Singapore locations (e.g., "Changi Airport T3", "Marina Bay Sands")</li>
               <li>Include MRT station names for better accuracy (e.g., "Raffles Place MRT")</li>
               <li>Search by postal codes (e.g., "018956" for Marina Bay Sands)</li>
               <li>Preview the location on the map to verify it's correct</li>
-              <li>You can manually adjust coordinates if needed</li>
+              <li>Choose appropriate type: Public, Private, School, or Office</li>
             </ul>
-            <h6 className="destination-guidelines-title">Singapore coordinate ranges:</h6>
-            <ul className="destination-guidelines-list">
+            <h6 className="pickup-guidelines-title">Singapore coordinate ranges:</h6>
+            <ul className="pickup-guidelines-list">
               <li><strong>Latitude:</strong> 1.2° to 1.5° North</li>
               <li><strong>Longitude:</strong> 103.6° to 104.1° East</li>
             </ul>
@@ -583,13 +617,13 @@ export default function DestinationAddition() {
 
       {/* Map Preview Modal */}
       {showPreview && (
-        <div className="modal fade show destination-addition-modal" tabIndex="-1">
+        <div className="modal fade show pickup-addition-modal" tabIndex="-1">
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  <FaMapMarkerAlt className="destination-modal-icon" />
-                  Location Preview: {newDestination.name || "Selected Location"}
+                  <FaMapMarkerAlt className="pickup-modal-icon" />
+                  Location Preview: {newPickupLocation.name || "Selected Location"}
                 </h5>
                 <button
                   type="button"
@@ -599,11 +633,11 @@ export default function DestinationAddition() {
                 ></button>
               </div>
               <div className="modal-body">
-                <div className="destination-coordinates-display">
-                  <strong>Coordinates:</strong> {parseFloat(newDestination.latitude).toFixed(6)}, {parseFloat(newDestination.longitude).toFixed(6)}
+                <div className="pickup-coordinates-display">
+                  <strong>Type:</strong> {newPickupLocation.type} | <strong>Coordinates:</strong> {parseFloat(newPickupLocation.latitude).toFixed(6)}, {parseFloat(newPickupLocation.longitude).toFixed(6)}
                 </div>
-                <div id="previewMap" className="destination-addition-map-container">
-                  <div className="destination-addition-map-loading">
+                <div id="previewMap" className="pickup-addition-map-container">
+                  <div className="pickup-addition-map-loading">
                     <div className="spinner-border" role="status">
                       <span className="visually-hidden">Loading map...</span>
                     </div>
@@ -623,17 +657,17 @@ export default function DestinationAddition() {
           </div>
         </div>
       )}
-      {showPreview && <div className="modal-backdrop fade show destination-addition-modal-backdrop"></div>}
+      {showPreview && <div className="modal-backdrop fade show pickup-addition-modal-backdrop"></div>}
 
       {/* Bulk Preview Modal */}
       {showBulkPreview && (
-        <div className="modal fade show destination-addition-modal" tabIndex="-1">
+        <div className="modal fade show pickup-addition-modal" tabIndex="-1">
           <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  <FaFileExcel className="destination-modal-icon" />
-                  Bulk Upload Preview ({bulkData.length} destinations)
+                  <FaFileExcel className="pickup-modal-icon" />
+                  Bulk Upload Preview ({bulkData.length} pickup locations)
                 </h5>
                 <button
                   type="button"
@@ -643,33 +677,39 @@ export default function DestinationAddition() {
                 ></button>
               </div>
               <div className="modal-body">
-                <div className="destination-bulk-table-container">
-                  <table className="table table-striped table-hover destination-bulk-table">
+                <div className="pickup-bulk-table-container">
+                  <table className="table table-striped table-hover pickup-bulk-table">
                     <thead className="table-dark sticky-top">
                       <tr>
                         <th>#</th>
-                        <th>Destination Name</th>
+                        <th>Pickup Location Name</th>
+                        <th>Type</th>
                         <th>Latitude</th>
                         <th>Longitude</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {bulkData.map((destination, index) => (
+                      {bulkData.map((pickupLocation, index) => (
                         <tr key={index}>
                           <td>{index + 1}</td>
-                          <td>{destination.name}</td>
-                          <td>{destination.latitude.toFixed(6)}</td>
-                          <td>{destination.longitude.toFixed(6)}</td>
+                          <td>{pickupLocation.name}</td>
                           <td>
-                            {destination.status === 'pending' && (
-                              <span className="badge destination-status-badge destination-status-pending">Pending</span>
+                            <span className={`pickup-type-badge ${pickupLocation.type?.toLowerCase()}`}>
+                              {pickupLocation.type}
+                            </span>
+                          </td>
+                          <td>{pickupLocation.latitude.toFixed(6)}</td>
+                          <td>{pickupLocation.longitude.toFixed(6)}</td>
+                          <td>
+                            {pickupLocation.status === 'pending' && (
+                              <span className="badge pickup-status-badge pickup-status-pending">Pending</span>
                             )}
-                            {destination.status === 'success' && (
-                              <span className="badge destination-status-badge destination-status-success">Success</span>
+                            {pickupLocation.status === 'success' && (
+                              <span className="badge pickup-status-badge pickup-status-success">Success</span>
                             )}
-                            {destination.status === 'error' && (
-                              <span className="badge destination-status-badge destination-status-error" title={destination.error}>
+                            {pickupLocation.status === 'error' && (
+                              <span className="badge pickup-status-badge pickup-status-error" title={pickupLocation.error}>
                                 Error
                               </span>
                             )}
@@ -681,7 +721,7 @@ export default function DestinationAddition() {
                 </div>
 
                 {bulkData.some(item => item.status === 'error') && (
-                  <div className="destination-bulk-warning">
+                  <div className="pickup-bulk-warning">
                     <strong>Note:</strong> Some items have errors. Hover over error badges to see details.
                   </div>
                 )}
@@ -703,12 +743,12 @@ export default function DestinationAddition() {
                   >
                     {isUploading ? (
                       <>
-                        <span className="spinner-border destination-loading-spinner"></span>
+                        <span className="spinner-border pickup-loading-spinner"></span>
                         Uploading...
                       </>
                     ) : (
                       <>
-                        <FaUpload className="destination-btn-icon" />
+                        <FaUpload className="pickup-btn-icon" />
                         Upload All ({bulkData.filter(item => item.status === 'pending').length})
                       </>
                     )}
@@ -719,7 +759,7 @@ export default function DestinationAddition() {
           </div>
         </div>
       )}
-      {showBulkPreview && <div className="modal-backdrop fade show destination-addition-modal-backdrop"></div>}
+      {showBulkPreview && <div className="modal-backdrop fade show pickup-addition-modal-backdrop"></div>}
     </div>
   );
 }
