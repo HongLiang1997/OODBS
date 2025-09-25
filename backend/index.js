@@ -47,6 +47,9 @@ app.use('/destinations', destinationRouter);
 const scheduleRouter = require('./routes/schedule');
 app.use('/schedule', scheduleRouter);
 
+const passengerRouter = require('./routes/passenger');
+app.use('/passenger', passengerRouter);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);

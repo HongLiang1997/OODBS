@@ -1,15 +1,34 @@
 import React, { useState } from "react";
-import "../styles/Login.css";
+import "../../styles/login.css";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login logic here, e.g., call API
-    console.log({ email, password, rememberMe });
+    try {
+      const res = await fetch("http://localhost:5000/auth/passenger-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.user && data.user.password_hash) {
+          delete data.user.password_hash;
+        }
+        localStorage.setItem("passenger", JSON.stringify(data.user));
+        navigate("/passenger/dashboard");
+      } else {
+        alert(data.message || "Login failed");
+      }
+    } catch (err) {
+      alert("Server error");
+    }
   };
 
   return (
@@ -18,24 +37,14 @@ export default function Login() {
         <div className="container">
           <div className="card border-light-subtle shadow-sm">
             <div className="row g-0">
-              <div className="col-12 col-md-6 text-bg-primary">
+              <div className="col-12 col-md-6 passenger-login">
                 <div className="d-flex align-items-center justify-content-center h-100">
                   <div className="col-10 col-xl-8 py-3">
-                    <img
-                      className="img-fluid rounded mb-4"
-                      loading="lazy"
-                      src="./assets/img/bsb-logo-light.svg"
-                      width={245}
-                      height={80}
-                      alt="BootstrapBrain Logo"
-                    />
                     <hr className="border-primary-subtle mb-4" />
-                    <h2 className="h1 mb-4">
-                      We make digital products that drive you to stand out.
-                    </h2>
+                    <h2 className="h1 mb-4">OODBS Passenger Portal</h2>
                     <p className="lead m-0">
-                      We write words, take photos, make videos, and interact
-                      with artificial intelligence.
+                      Book your bus tickets easily and track your journeys. 
+                      Connecting you to your destinations with comfort and convenience.
                     </p>
                   </div>
                 </div>
@@ -45,7 +54,7 @@ export default function Login() {
                   <div className="row">
                     <div className="col-12">
                       <div className="mb-5">
-                        <h3>Log in</h3>
+                        <h3>Passenger Login</h3>
                       </div>
                     </div>
                   </div>
@@ -111,25 +120,6 @@ export default function Login() {
                       </div>
                     </div>
                   </form>
-                  <div className="row">
-                    <div className="col-12">
-                      <hr className="mt-5 mb-4 border-secondary-subtle" />
-                      <div className="d-flex gap-2 gap-md-4 flex-column flex-md-row justify-content-md-end">
-                        <a
-                          href="#!"
-                          className="link-secondary text-decoration-none"
-                        >
-                          Create new account
-                        </a>
-                        <a
-                          href="#!"
-                          className="link-secondary text-decoration-none"
-                        >
-                          Forgot password
-                        </a>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

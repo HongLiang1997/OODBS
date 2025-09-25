@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import PassengerLogin from "./pages/PassengerLogin";
+import PassengerLogin from "./pages/passenger/PassengerLogin";
+import PassengerDashboard from "./pages/passenger/passengerDashboard";
+
+
 import AdminLogin from "./pages/admin/AdminLogin";
 import RequireAuth from "./components/admin/RequireAuth";
 
@@ -22,10 +25,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<PassengerLogin />} />
-        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/" element={<Navigate to="/passenger/login" replace />} />
+        <Route path="/passenger/login" element={<PassengerLogin />} />
+        <Route path="/passenger/dashboard" element={<PassengerDashboard />} />
 
+        <Route path="/admin" element={<AdminLogin />} />
+ 
         {/* Protected admin pages */}
         <Route element={<RequireAuth />}>
           <Route path="/admin" element={<AdminLayout />}>
