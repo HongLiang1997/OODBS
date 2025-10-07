@@ -12,6 +12,10 @@ export default function PassengerDashboard() {
   const [destinations, setDestinations] = useState([]);
   const [pastRequests, setPastRequests] = useState([]);
   
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  
   // State for booking form
   const [bookingForm, setBookingForm] = useState({
     pickup_id: '',
@@ -82,13 +86,16 @@ export default function PassengerDashboard() {
       // Check if response is successful and data is an array
       if (response.ok && Array.isArray(data)) {
         setPastRequests(data);
+        setCurrentPage(1); // Reset to first page when new data is loaded
       } else {
         console.error('Invalid response:', data);
         setPastRequests([]); // Set empty array as fallback
+        setCurrentPage(1);
       }
     } catch (error) {
       console.error('Error fetching past requests:', error);
       setPastRequests([]); // Set empty array as fallback
+      setCurrentPage(1);
     }
   };
 
@@ -204,6 +211,28 @@ export default function PassengerDashboard() {
     } catch (error) {
       console.error('Error updating personal info:', error);
       alert('Error updating personal information');
+    }
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(pastRequests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentRequests = pastRequests.slice(startIndex, endIndex);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
     }
   };
 
@@ -374,7 +403,7 @@ export default function PassengerDashboard() {
                         </td>
                       </tr>
                     ) : (
-                      pastRequests.map(request => (
+                      currentRequests.map(request => (
                         <tr key={request.request_id}>
                           <td>#{request.request_id}</td>
                           <td>{request.pickup_name || 'N/A'}</td>
@@ -399,6 +428,42 @@ export default function PassengerDashboard() {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Pagination Controls */}
+              {pastRequests.length > itemsPerPage && (
+                <div className="pagination-container">
+                  <div className="pagination-info">
+                    Showing {startIndex + 1} to {Math.min(endIndex, pastRequests.length)} of {pastRequests.length} entries
+                  </div>
+                  <div className="pagination-controls">
+                    <button 
+                      className="pagination-btn"
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </button>
+                    
+                    {Array.from({ length: totalPages }, (_, index) => (
+                      <button
+                        key={index + 1}
+                        className={`pagination-btn ${currentPage === index + 1 ? 'active' : ''}`}
+                        onClick={() => handlePageChange(index + 1)}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
+                    
+                    <button 
+                      className="pagination-btn"
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
