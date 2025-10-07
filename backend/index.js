@@ -50,6 +50,9 @@ app.use('/schedule', scheduleRouter);
 const passengerRouter = require('./routes/passenger');
 app.use('/passenger', passengerRouter);
 
+const routingRouter = require('./routes/routing');
+app.use('/routing', routingRouter);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
