@@ -549,8 +549,7 @@ export default function PassengerDashboard() {
                               <td className="stop-order">{route.stop_order}</td>
                               <td className="destination-name">{route.destination_name || 'N/A'}</td>
                               <td className="passenger-info">
-                                {route.passenger_name || 'N/A'}
-                                {route.passenger_count && ` (${route.passenger_count})`}
+                                {route.passenger_name || 'N/A'} ({route.total_passenger_count || 0})
                               </td>
                               <td className="tier-name">{route.tier_name || 'N/A'}</td>
                               <td className="eta-time">

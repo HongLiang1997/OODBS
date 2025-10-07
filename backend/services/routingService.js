@@ -1,6 +1,28 @@
 class RoutingService {
   constructor() {
     // No file dependencies needed
+    
+    // ========================================
+    // 🔧 ROUTING CONFIGURATION & THRESHOLDS
+    // ========================================
+    this.config = {
+      // Speed and timing parameters
+      AVERAGE_SPEED_KMH: 45,              // Average driving speed in km/h (city + highway mix)
+      METERS_PER_MINUTE: 750,             // Calculated: 45 km/h = 750 meters/minute
+      
+      // Route constraints
+      MAX_ROUTE_TIME_MINUTES: 90,         // Maximum total route time (1.5 hours)
+      MAX_DETOUR_MINUTES: 20,             // Maximum additional time for new passenger
+      
+      // Passenger boarding/alighting
+      BOARDING_TIME_MINUTES: 5,           // Time allowance per stop for passenger operations
+      
+      // Schedule timing
+      DEPARTURE_PREP_MINUTES: 30,         // Buffer time before departure (if no scheduled time)
+      
+      // Capacity settings
+      CAPACITY_BUFFER_PERCENT: 0,         // Reserve % of bus capacity (0 = use full capacity)
+    };
   }
 
   /**
@@ -284,6 +306,62 @@ class RoutingService {
       recommendation: this.getRecommendation(dijkstraResults, bellmanFordResults),
       timestamp: new Date().toISOString()
     };
+  }
+
+  /**
+   * Get current routing configuration
+   * @returns {Object} - Current configuration
+   */
+  getConfig() {
+    return { ...this.config };
+  }
+
+  /**
+   * Update routing configuration
+   * @param {Object} updates - Configuration updates
+   * @returns {Object} - Updated configuration
+   */
+  updateConfig(updates) {
+    const changes = [];
+    
+    Object.keys(updates).forEach(key => {
+      if (this.config.hasOwnProperty(key)) {
+        const oldValue = this.config[key];
+        this.config[key] = updates[key];
+        
+        // Recalculate METERS_PER_MINUTE if speed changed
+        if (key === 'AVERAGE_SPEED_KMH') {
+          this.config.METERS_PER_MINUTE = Math.round(updates[key] * 1000 / 60);
+          changes.push(`METERS_PER_MINUTE: ${Math.round(oldValue * 1000 / 60)} → ${this.config.METERS_PER_MINUTE} (auto-calculated)`);
+        }
+        
+        changes.push(`${key}: ${oldValue} → ${updates[key]}`);
+      }
+    });
+    
+    return {
+      changes,
+      newConfig: { ...this.config }
+    };
+  }
+
+  /**
+   * Get effective bus capacity with buffer
+   * @param {number} totalCapacity - Total bus capacity
+   * @returns {number} - Effective capacity after buffer
+   */
+  getEffectiveBusCapacity(totalCapacity) {
+    const buffer = Math.floor(totalCapacity * this.config.CAPACITY_BUFFER_PERCENT / 100);
+    return totalCapacity - buffer;
+  }
+
+  /**
+   * Convert distance to time using configured speed
+   * @param {number} distanceMeters - Distance in meters
+   * @returns {number} - Time in minutes
+   */
+  distanceToTime(distanceMeters) {
+    return Math.ceil(distanceMeters / this.config.METERS_PER_MINUTE);
   }
 
   /**

@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const RoutingService = require("../services/routingService");
 
+// Configuration is now managed by RoutingService
+
 let pool;
 const routingService = new RoutingService();
 
@@ -9,6 +11,35 @@ const routingService = new RoutingService();
 router.use((req, res, next) => {
   if (!pool) pool = req.app.get("pool");
   next();
+});
+
+// GET /passenger/routing-config - Get current routing configuration
+router.get("/routing-config", (req, res) => {
+  const config = routingService.getConfig();
+  res.json({
+    config: config,
+    description: {
+      AVERAGE_SPEED_KMH: "Average driving speed for time calculations",
+      METERS_PER_MINUTE: "Calculated meters per minute (derived from speed)",
+      MAX_ROUTE_TIME_MINUTES: "Maximum total route duration",
+      MAX_DETOUR_MINUTES: "Maximum additional time when adding new passenger",
+      BOARDING_TIME_MINUTES: "Time allowance per stop for boarding/alighting",
+      DEPARTURE_PREP_MINUTES: "Buffer time before departure (fallback only)",
+      CAPACITY_BUFFER_PERCENT: "Reserve percentage of bus capacity"
+    }
+  });
+});
+
+// PUT /passenger/routing-config - Update routing configuration (for tweaking)
+router.put("/routing-config", (req, res) => {
+  const updates = req.body;
+  const result = routingService.updateConfig(updates);
+  
+  res.json({
+    message: "Routing configuration updated",
+    updated: result.changes,
+    newConfig: result.newConfig
+  });
 });
 
 // GET /passenger/pickup-locations - Get all pickup locations
@@ -125,16 +156,7 @@ router.post("/requests", async (req, res) => {
       console.log(`   Bus ID: ${bus_id}`);
       console.log(`   Service ID: ${assignmentResult.service_id}`);
       
-      // Create initial route entry for this request
-      const [routeResult] = await pool.query(
-        `INSERT INTO routes (schedule_id, request_id, tier_id, stop_order, eta)
-         VALUES (?, ?, ?, ?, NOW() + INTERVAL 30 MINUTE)`,
-        [schedule_id, result.insertId, tier_id, 1]
-      );
-      
-      console.log(`   ✅ Created route entry with ID: ${routeResult.insertId}`);
-      
-      // Update the route order based on routing algorithm (this will include the new request)
+      // updateRouteOrder will handle all route creation with proper cumulative timing
       await updateRouteOrder(schedule_id, assignmentResult.newRouteOrder);
 
       console.log(`   ✅ Updated route order with ${assignmentResult.newRouteOrder.length} stops`);
@@ -283,23 +305,33 @@ router.get("/request-details/:request_id", async (req, res) => {
       
       schedule = scheduleRows.length > 0 ? scheduleRows[0] : null;
       
-      // Get route details for this schedule
+      // Get route details for this schedule - aggregate by destination but show current user's name with total count
       if (schedule) {
         const [routeRows] = await pool.query(
           `SELECT 
-             r.*,
+             MIN(r.stop_order) as stop_order,
+             MIN(r.eta) as eta,
+             pr.location_id,
              ol.name as destination_name,
-             u.full_name as passenger_name,
-             pr.passenger_count,
-             t.name as tier_name
-           FROM routes r
-           LEFT JOIN passenger_requests pr ON r.request_id = pr.request_id
+             SUM(CAST(pr.passenger_count AS UNSIGNED)) as total_passenger_count,
+             MIN(t.name) as tier_name,
+             pr.schedule_id,
+             -- Get any passenger name going to this destination (preferably the current user if they're going there)
+             (SELECT u.full_name FROM passenger_requests pr2 
+              LEFT JOIN users u ON pr2.user_id = u.user_id 
+              WHERE pr2.location_id = pr.location_id 
+              AND pr2.schedule_id = pr.schedule_id 
+              AND pr2.request_status = true
+              ORDER BY CASE WHEN pr2.user_id = ? THEN 0 ELSE 1 END, pr2.request_id
+              LIMIT 1) as passenger_name
+           FROM passenger_requests pr
+           LEFT JOIN routes r ON pr.request_id = r.request_id
            LEFT JOIN organization_locations ol ON pr.location_id = ol.location_id
-           LEFT JOIN users u ON pr.user_id = u.user_id
-           LEFT JOIN tier t ON r.tier_id = t.tier_id
-           WHERE r.schedule_id = ?
-           ORDER BY r.stop_order ASC`,
-          [request.schedule_id]
+           LEFT JOIN tier t ON pr.tier_id = t.tier_id
+           WHERE pr.schedule_id = ? AND pr.request_status = true
+           GROUP BY pr.location_id, ol.name, pr.schedule_id
+           ORDER BY MIN(r.stop_order) ASC`,
+          [request.user_id, request.schedule_id]
         );
         
         routes = routeRows;
@@ -419,9 +451,10 @@ async function findOptimalSchedule(pickup_id, location_id, passenger_count) {
     console.log(`\n=== FINDING OPTIMAL SCHEDULE ===`);
     console.log(`Pickup ID: ${pickup_id}, Destination ID: ${location_id}, Passengers: ${passenger_count}`);
     
-    // Configuration - these could be moved to environment variables
-    const MAX_ROUTE_TIME_MINUTES = 90; // Maximum total route time
-    const MAX_DETOUR_MINUTES = 20; // Maximum additional time added by new destination
+    // Use RoutingService configuration
+    const config = routingService.getConfig();
+    const MAX_ROUTE_TIME_MINUTES = config.MAX_ROUTE_TIME_MINUTES;
+    const MAX_DETOUR_MINUTES = config.MAX_DETOUR_MINUTES;
     
     // Find all active buses that service the same pickup location
     const [candidateBuses] = await pool.query(
@@ -599,17 +632,20 @@ async function evaluateBusServiceForNewPassenger(busService, newDestination, pas
     const currentPassengerCount = parseInt(currentPassengers[0]?.total_passengers || 0);
     const newPassengerCount = parseInt(passengerCount);
     const totalPassengers = currentPassengerCount + newPassengerCount;
+    const config = routingService.getConfig();
+    const effectiveCapacity = routingService.getEffectiveBusCapacity(busService.capacity);
+    
     console.log(`     📊 Capacity calculation:`);
     console.log(`        Raw SUM result: ${currentPassengers[0]?.total_passengers} (type: ${typeof currentPassengers[0]?.total_passengers})`);
     console.log(`        Current passengers: ${currentPassengerCount} (after parseInt)`);
     console.log(`        Adding: ${newPassengerCount} (after parseInt, original: ${passengerCount})`);
-    console.log(`        Total: ${totalPassengers}/${busService.capacity}`);
+    console.log(`        Total: ${totalPassengers}/${effectiveCapacity} (${busService.capacity} total, ${config.CAPACITY_BUFFER_PERCENT}% buffer)`);
     
-    if (totalPassengers > busService.capacity) {
+    if (totalPassengers > effectiveCapacity) {
       console.log(`     ❌ Capacity exceeded!`);
       return {
         suitable: false,
-        reason: `Bus capacity exceeded (${totalPassengers}/${busService.capacity})`
+        reason: `Bus capacity exceeded (${totalPassengers}/${effectiveCapacity})`
       };
     }
 
@@ -642,11 +678,31 @@ async function evaluateBusServiceForNewPassenger(busService, newDestination, pas
     // Check if destination already exists in route
     const destinationExists = existingDestinations.some(dest => dest.location_id === newDestination.location_id);
     if (destinationExists) {
+      console.log(`     ✅ Destination already exists in route - passenger will join existing stop`);
+      
+      // We still need to return the current route order so the new passenger gets a route entry
+      // Run routing algorithm with existing destinations only to get current route order
+      const pickupLocation = {
+        name: busService.pickup_name,
+        lat: busService.pickup_lat,
+        lng: busService.pickup_lng
+      };
+      
+      const formattedExistingDestinations = existingDestinations.map(dest => ({
+        location_id: dest.location_id,
+        name: dest.name,
+        lat: dest.latitude,
+        lng: dest.longitude
+      }));
+      
+      const routingResult = routingService.runDijkstra(pickupLocation, formattedExistingDestinations);
+      
       return {
         suitable: true,
-        reason: "Destination already exists in route - no routing changes needed",
-        newRouteOrder: [], // No changes needed
-        timingAnalysis: { additionalTime: 0, totalTime: "unchanged" }
+        reason: "Destination already exists in route - passenger will join existing stop",
+        newRouteOrder: routingResult.success ? routingResult.routeOrder : [],
+        timingAnalysis: { additionalTime: 0, totalTime: "unchanged" },
+        routingDetails: routingResult
       };
     }
 
@@ -711,11 +767,9 @@ async function evaluateBusServiceForNewPassenger(busService, newDestination, pas
     console.log(`        New total distance: ${Math.round(newTotalDistance)}m`);
     console.log(`        Additional distance: ${Math.round(additionalDistance)}m`);
     
-    // Convert distance to time (assuming 45 km/h average speed - more realistic for mixed city/highway driving)
-    // 45 km/h = 45,000 meters/hour = 750 meters/minute
-    const METERS_PER_MINUTE = 750; // 45 km/h converted to m/min
-    const additionalTimeMinutes = Math.ceil(additionalDistance / METERS_PER_MINUTE);
-    const totalTimeMinutes = Math.ceil(newTotalDistance / METERS_PER_MINUTE);
+    // Convert distance to time using RoutingService methods
+    const additionalTimeMinutes = routingService.distanceToTime(additionalDistance);
+    const totalTimeMinutes = routingService.distanceToTime(newTotalDistance);
     
     console.log(`        Total route time: ${totalTimeMinutes} min (max: ${maxRouteTime} min)`);
     console.log(`        Additional time: ${additionalTimeMinutes} min (max: ${maxDetour} min)`);
@@ -805,14 +859,15 @@ async function updateRouteOrder(schedule_id, newRouteOrder) {
     
     for (let i = 0; i < newRouteOrder.length; i++) {
       const stop = newRouteOrder[i];
-      const segmentTimeMinutes = Math.ceil(stop.distance / 750); // Time from previous location to this destination
+      const segmentTimeMinutes = routingService.distanceToTime(stop.distance); // Time from previous location to this destination
       
       // Add travel time from previous location to current stop
       currentTime.setMinutes(currentTime.getMinutes() + segmentTimeMinutes);
       
-      // Add boarding/alighting time (5 minutes per stop)
+      // Add boarding/alighting time per stop
       if (i > 0) { // Don't add boarding time for first stop (passengers already on bus from pickup)
-        currentTime.setMinutes(currentTime.getMinutes() + 5);
+        const config = routingService.getConfig();
+        currentTime.setMinutes(currentTime.getMinutes() + config.BOARDING_TIME_MINUTES);
       }
       
       console.log(`Processing stop ${i + 1}: ${stop.location.name} (location_id: ${stop.location.location_id})`);
