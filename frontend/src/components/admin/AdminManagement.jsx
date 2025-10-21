@@ -93,6 +93,14 @@ export default function ManagementTable({
       if (col.getValue && typeof col.getValue === "function") {
         formData[col.key] = col.getValue(item);
       }
+      // Don't pre-fill password fields - always start empty
+      if (col.inputType === "password") {
+        formData[col.key] = "";
+      }
+      // Handle null values for driver fields
+      if ((col.key === "driver_name" || col.key === "driver_phone_num" || col.key === "driver_email") && !formData[col.key]) {
+        formData[col.key] = "";
+      }
     });
 
     setEditItem(item);
@@ -238,8 +246,8 @@ export default function ManagementTable({
           />
 
           <div className="management-list">
-            <div className="management-header" data-columns={columns.length}>
-              {columns.map(({ key, label }) => (
+            <div className="management-header" data-columns={columns.filter(col => !col.hidden).length}>
+              {columns.filter(col => !col.hidden).map(({ key, label }) => (
                 <div
                   key={key}
                   className={`management-col management-col-${key}`}
@@ -257,9 +265,9 @@ export default function ManagementTable({
                 <div
                   className="management-row"
                   key={item[itemKey]}
-                  data-columns={columns.length}
+                  data-columns={columns.filter(col => !col.hidden).length}
                 >
-                  {columns.map(({ key, render }) => (
+                  {columns.filter(col => !col.hidden).map(({ key, render }) => (
                     <div
                       key={key}
                       className={`management-col management-col-${key}`}

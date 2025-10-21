@@ -32,7 +32,7 @@ export default function EditModal({
           <div className="modal-body">
             {columns.map(({ key, label, editable, inputType = "text", options }) => {
               if (!editable) return null;
-              const value = data[key] ?? "";
+              
               return (
                 <div className="mb-3" key={key}>
                   <label className="form-label">{label}</label>
@@ -40,7 +40,7 @@ export default function EditModal({
                     <select
                       className="form-select"
                       name={key}
-                      value={value}
+                      value={data[key] ?? ""}
                       onChange={onChange}
                       required
                     >
@@ -55,10 +55,11 @@ export default function EditModal({
                       type={inputType}
                       className="form-control"
                       name={key}
-                      value={value}
+                      value={data[key] ?? ""}
                       onChange={onChange}
-                      required
                       min={inputType === "number" ? 1 : undefined}
+                      placeholder={inputType === "password" ? "Enter new password or leave empty to keep current" : undefined}
+                      autocomplete={inputType === "email" ? "new-email" : inputType === "password" ? "new-password" : "off"}
                     />
                   )}
                 </div>

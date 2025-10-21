@@ -15,7 +15,15 @@ router.use((req, res, next) => {
 // GET all buses
 router.get("/", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM bus");
+    const [rows] = await pool.query(`
+      SELECT 
+        b.*,
+        u.full_name as driver_name,
+        u.phone_num as driver_phone_num,
+        u.email as driver_email
+      FROM bus b
+      LEFT JOIN users u ON b.driver_id = u.user_id AND u.role = 'driver'
+    `);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -26,9 +34,16 @@ router.get("/", async (req, res) => {
 router.get("/:bus_id", async (req, res) => {
   const { bus_id } = req.params;
   try {
-    const [rows] = await pool.query("SELECT * FROM bus WHERE bus_id = ?", [
-      bus_id,
-    ]);
+    const [rows] = await pool.query(`
+      SELECT 
+        b.*,
+        u.full_name as driver_name,
+        u.phone_num as driver_phone_num,
+        u.email as driver_email
+      FROM bus b
+      LEFT JOIN users u ON b.driver_id = u.user_id AND u.role = 'driver'
+      WHERE b.bus_id = ?
+    `, [bus_id]);
     if (rows.length === 0) {
       return res.status(404).json({ error: "Bus not found" });
     }
@@ -42,10 +57,16 @@ router.get("/:bus_id", async (req, res) => {
 router.get("/organization/:organization_id", async (req, res) => {
   const { organization_id } = req.params;
   try {
-    const [rows] = await pool.query(
-      "SELECT * FROM bus WHERE organization_id = ?",
-      [organization_id]
-    );
+    const [rows] = await pool.query(`
+      SELECT 
+        b.*,
+        u.full_name as driver_name,
+        u.phone_num as driver_phone_num,
+        u.email as driver_email
+      FROM bus b
+      LEFT JOIN users u ON b.driver_id = u.user_id AND u.role = 'driver'
+      WHERE b.organization_id = ?
+    `, [organization_id]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -59,6 +80,8 @@ router.post("/", async (req, res) => {
     plate_number,
     driver_name,
     driver_phone_num,
+    driver_email,
+    driver_password,
     capacity,
     company
   } = req.body;
@@ -68,6 +91,8 @@ router.post("/", async (req, res) => {
     !plate_number ||
     !driver_name ||
     !driver_phone_num ||
+    !driver_email ||
+    !driver_password ||
     !capacity ||
     !company
   ) {
@@ -119,62 +144,6 @@ router.post("/", async (req, res) => {
     res.status(201).json({ message: "Bus created successfully" });
   } catch (err) {
     console.error("Error in POST /buses:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PUT: Update an existing bus by ID
-router.put("/:bus_id", async (req, res) => {
-  const { bus_id } = req.params;
-  const {
-    plate_number,
-    driver_name,
-    driver_phone_num,
-    capacity,
-    company,
-    status
-  } = req.body;
-
-  if (
-    !plate_number ||
-    !driver_name ||
-    !driver_phone_num ||
-    !capacity ||
-    !company ||
-    !status
-  ) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
-
-  try {
-    const [result] = await pool.query(
-      `UPDATE Bus SET
-        plate_number = ?,
-        driver_name = ?,
-        driver_phone_num = ?,
-        capacity = ?,
-        company = ?,
-        status = ?
-      WHERE bus_id = ?`,
-      [
-        plate_number,
-        driver_name,
-        driver_phone_num,
-        capacity,
-        company,
-        status,
-        bus_id
-      ]
-    );
-
-    if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ error: "Bus not found or no changes made" });
-    }
-
-    res.json({ message: "Bus updated successfully" });
-  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -246,6 +215,113 @@ router.post("/bulk-upload", upload.single("file"), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Bulk upload failed" });
+  }
+});
+
+// PUT: Update an existing bus by ID
+router.put("/:bus_id", async (req, res) => {
+  const { bus_id } = req.params;
+  const {
+    plate_number,
+    driver_name,
+    driver_phone_num,
+    driver_email,
+    driver_password,
+    capacity,
+    company,
+    status
+  } = req.body;
+
+  console.log("=== BUS UPDATE DEBUG ===");
+  console.log("Bus ID:", bus_id);
+  console.log("Update data:", {
+    plate_number,
+    driver_name,
+    driver_phone_num,
+    driver_email,
+    driver_password: driver_password ? "***PROVIDED***" : "EMPTY",
+    capacity,
+    company,
+    status
+  });
+
+  if (!plate_number || !driver_name || !driver_phone_num || !capacity || !company || !status) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    // Get the current bus to find organization_id and existing driver_id
+    const [busInfo] = await pool.query(
+      `SELECT organization_id, driver_id FROM bus WHERE bus_id = ?`,
+      [bus_id]
+    );
+
+    if (busInfo.length === 0) {
+      return res.status(404).json({ error: "Bus not found" });
+    }
+
+    const organizationId = busInfo[0].organization_id;
+    const existingDriverId = busInfo[0].driver_id;
+
+    console.log(`Updating bus ${bus_id}: org=${organizationId}, existing driver_id=${existingDriverId}`);
+    let userId = existingDriverId;
+    
+    if (existingDriverId) {
+      // Update the existing user linked to this bus
+      let updateQuery = `UPDATE users SET full_name = ?, phone_num = ?, organization_id = ?, role = 'driver'`;
+      let updateParams = [driver_name, driver_phone_num, organizationId];
+      
+      // Add email if provided
+      if (driver_email && driver_email.trim() !== '') {
+        updateQuery += `, email = ?`;
+        updateParams.push(driver_email.trim());
+      }
+      
+      // Add password if provided
+      if (driver_password && driver_password.trim() !== '') {
+        updateQuery += `, password_hash = ?`;
+        updateParams.push(driver_password.trim());
+      }
+      
+      updateQuery += ` WHERE user_id = ?`;
+      updateParams.push(existingDriverId);
+      
+      await pool.query(updateQuery, updateParams);
+      console.log(`✅ Updated existing user ${existingDriverId} with email: ${driver_email || 'NO EMAIL'}, password: ${driver_password ? 'YES' : 'NO'}`);
+    } else {
+      // No existing driver linked - create new user if driver info provided
+      if (driver_name && driver_phone_num) {
+        const [userResult] = await pool.query(
+          `INSERT INTO users (organization_id, full_name, phone_num, email, password_hash, role) 
+           VALUES (?, ?, ?, ?, ?, 'driver')`,
+          [organizationId, driver_name, driver_phone_num, driver_email || null, driver_password || 'defaultpass123']
+        );
+        userId = userResult.insertId;
+        console.log(`✅ Created new user ${userId} with email: ${driver_email || 'NULL'}`);
+      }
+    }
+
+    // Update the bus
+    await pool.query(
+      `UPDATE bus SET 
+        plate_number = ?, 
+        driver_id = ?, 
+        capacity = ?, 
+        company = ?, 
+        status = ?
+       WHERE bus_id = ?`,
+      [plate_number, userId, capacity, company, status, bus_id]
+    );
+
+    console.log("✅ Bus update completed successfully");
+    res.json({ 
+      message: "Bus updated successfully",
+      bus_id: bus_id,
+      user_id: userId
+    });
+  } catch (err) {
+    console.error("❌ Error updating bus:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

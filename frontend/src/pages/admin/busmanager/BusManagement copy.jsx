@@ -27,6 +27,8 @@ export default function BusManagement() {
     plate_number: "",
     driver_name: "",
     driver_phone_num: "",
+    driver_email: "",
+    driver_password: "",
     capacity: "",
     company: "",
     status: "inactive",
@@ -55,6 +57,8 @@ export default function BusManagement() {
       plate_number: bus.plate_number,
       driver_name: bus.driver_name,
       driver_phone_num: bus.driver_phone_num,
+      driver_email: bus.driver_email || "",
+      driver_password: "", // Don't pre-fill password for security
       capacity: bus.capacity,
       company: bus.company,
       status: bus.status,
@@ -232,6 +236,32 @@ export default function BusManagement() {
                           onChange={handleEditChange}
                           required
                         />
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Driver Email</label>
+                        <input
+                          type="email"
+                          className="form-control"
+                          name="driver_email"
+                          value={editFormData.driver_email}
+                          onChange={handleEditChange}
+                          required
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Driver Password</label>
+                        <input
+                          type="password"
+                          className="form-control"
+                          name="driver_password"
+                          value={editFormData.driver_password}
+                          onChange={handleEditChange}
+                          placeholder="Leave empty to keep current password"
+                          minLength="6"
+                        />
+                        <small className="form-text text-muted">
+                          Leave empty to keep the current password, or enter a new password (min 6 characters)
+                        </small>
                       </div>
                       <div className="mb-3">
                         <label className="form-label">Capacity</label>

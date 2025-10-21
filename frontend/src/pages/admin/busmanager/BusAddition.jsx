@@ -9,6 +9,8 @@ export default function BusInsertAndBulkUpload() {
     plate_number: "",
     driver_name: "",
     driver_phone_num: "",
+    driver_email: "",
+    driver_password: "",
     capacity: "",
     company: "",
   });
@@ -45,6 +47,8 @@ export default function BusInsertAndBulkUpload() {
       plate_number: null,
       driver_name: null,
       driver_phone_num: null,
+      driver_email: null,
+      driver_password: null,
       capacity: null,
       company: null
     };
@@ -73,6 +77,18 @@ export default function BusInsertAndBulkUpload() {
         console.log(`Driver phone column found at index ${index}: "${header}"`);
       }
       
+      // Check for driver email column
+      if ((headerStr.includes('email') || headerStr.includes('mail')) && columnMap.driver_email === null) {
+        columnMap.driver_email = index;
+        console.log(`Driver email column found at index ${index}: "${header}"`);
+      }
+      
+      // Check for driver password column
+      if ((headerStr.includes('password') || headerStr.includes('pass')) && columnMap.driver_password === null) {
+        columnMap.driver_password = index;
+        console.log(`Driver password column found at index ${index}: "${header}"`);
+      }
+      
       // Check for capacity column
       if ((headerStr.includes('capacity') || headerStr.includes('seats') || headerStr.includes('passenger')) && columnMap.capacity === null) {
         columnMap.capacity = index;
@@ -97,6 +113,8 @@ export default function BusInsertAndBulkUpload() {
       !newBus.plate_number ||
       !newBus.driver_name ||
       !newBus.driver_phone_num ||
+      !newBus.driver_email ||
+      !newBus.driver_password ||
       !newBus.capacity ||
       !newBus.company
     ) {
@@ -125,6 +143,8 @@ export default function BusInsertAndBulkUpload() {
           plate_number: "",
           driver_name: "",
           driver_phone_num: "",
+          driver_email: "",
+          driver_password: "",
           capacity: "",
           company: "",
         });
@@ -172,12 +192,15 @@ export default function BusInsertAndBulkUpload() {
       const columnMap = detectColumns(headers);
 
       if (columnMap.plate_number === null || columnMap.driver_name === null || 
-          columnMap.driver_phone_num === null || columnMap.capacity === null || 
+          columnMap.driver_phone_num === null || columnMap.driver_email === null ||
+          columnMap.driver_password === null || columnMap.capacity === null || 
           columnMap.company === null) {
         alert(`Could not detect required columns. Please ensure your file has columns for:
         - Plate Number (containing 'plate', 'number', 'registration')
         - Driver Name (containing 'driver name' or 'drivername')
         - Driver Phone (containing 'phone', 'contact', 'mobile')
+        - Driver Email (containing 'email', 'mail')
+        - Driver Password (containing 'password', 'pass')
         - Capacity (containing 'capacity', 'seats', 'passenger')
         - Company (containing 'company', 'operator', 'vendor')`);
         return;
@@ -191,11 +214,13 @@ export default function BusInsertAndBulkUpload() {
         const plate_number = row[columnMap.plate_number];
         const driver_name = row[columnMap.driver_name];
         const driver_phone_num = row[columnMap.driver_phone_num];
+        const driver_email = row[columnMap.driver_email];
+        const driver_password = row[columnMap.driver_password];
         const capacity = parseInt(row[columnMap.capacity]);
         const company = row[columnMap.company];
 
         // Skip empty rows
-        if (!plate_number || !driver_name || !driver_phone_num || isNaN(capacity) || !company) {
+        if (!plate_number || !driver_name || !driver_phone_num || !driver_email || !driver_password || isNaN(capacity) || !company) {
           console.warn(`Skipping incomplete row ${i + 1}`);
           continue;
         }
@@ -215,6 +240,8 @@ export default function BusInsertAndBulkUpload() {
           plate_number: plate_number.toString().trim(),
           driver_name: driver_name.toString().trim(),
           driver_phone_num: driver_phone_num.toString().trim(),
+          driver_email: driver_email.toString().trim(),
+          driver_password: driver_password.toString().trim(),
           capacity: capacity,
           company: company.toString().trim(),
           status: 'pending'
@@ -345,6 +372,42 @@ export default function BusInsertAndBulkUpload() {
                   required
                 />
               </div>
+              <div className="col-md-6">
+                <label htmlFor="driver_email" className="form-label">
+                  Driver Email
+                </label>
+                <input
+                  type="email"
+                  id="driver_email"
+                  name="driver_email"
+                  className="form-control"
+                  value={newBus.driver_email}
+                  onChange={handleInputChange}
+                  required
+                  autocomplete="new-email"
+                  placeholder="Enter driver email"
+                />
+              </div>
+            </div>
+
+            <div className="row g-3 mt-2">
+              <div className="col-md-6">
+                <label htmlFor="driver_password" className="form-label">
+                  Driver Password
+                </label>
+                <input
+                  type="password"
+                  id="driver_password"
+                  name="driver_password"
+                  className="form-control"
+                  value={newBus.driver_password}
+                  onChange={handleInputChange}
+                  required
+                  minLength="6"
+                  placeholder="Minimum 6 characters"
+                  autocomplete="new-password"
+                />
+              </div>
               <div className="col-md-3">
                 <label htmlFor="capacity" className="form-label">
                   Capacity
@@ -402,7 +465,7 @@ export default function BusInsertAndBulkUpload() {
                 disabled={isUploading}
               />
               <small className="form-text text-muted">
-                File should contain columns for Plate Number, Driver Name, Driver Phone, Capacity, and Company
+                File should contain columns for Plate Number, Driver Name, Driver Phone, Driver Email, Driver Password, Capacity, and Company
               </small>
             </div>
           </div>
@@ -458,6 +521,8 @@ export default function BusInsertAndBulkUpload() {
                         <th>Plate Number</th>
                         <th>Driver Name</th>
                         <th>Driver Phone</th>
+                        <th>Driver Email</th>
+                        <th>Password</th>
                         <th>Capacity</th>
                         <th>Company</th>
                         <th>Status</th>
@@ -470,6 +535,8 @@ export default function BusInsertAndBulkUpload() {
                           <td>{bus.plate_number}</td>
                           <td>{bus.driver_name}</td>
                           <td>{bus.driver_phone_num}</td>
+                          <td>{bus.driver_email}</td>
+                          <td>{'*'.repeat(bus.driver_password.length)}</td>
                           <td>{bus.capacity}</td>
                           <td>{bus.company}</td>
                           <td>

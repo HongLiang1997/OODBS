@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PassengerLogin from "./pages/passenger/PassengerLogin";
 import PassengerDashboard from "./pages/passenger/passengerDashboard";
 
+import DriverLogin from "./pages/driver/DriverLogin";
+import DriverDashboard from "./pages/driver/DriveDashboard";
 
 import AdminLogin from "./pages/admin/AdminLogin";
 import RequireAuth from "./components/admin/RequireAuth";
@@ -28,6 +30,9 @@ function App() {
         <Route path="/" element={<Navigate to="/passenger/login" replace />} />
         <Route path="/passenger/login" element={<PassengerLogin />} />
         <Route path="/passenger/dashboard" element={<PassengerDashboard />} />
+
+        <Route path="/driver/login" element={<DriverLogin />} />
+        <Route path="/driver/dashboard" element={<DriverDashboard />} />
 
         <Route path="/admin" element={<AdminLogin />} />
  

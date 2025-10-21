@@ -290,10 +290,32 @@ router.get("/request-details/:request_id", async (req, res) => {
     // Get bus details if assigned
     if (request.bus_id) {
       const [busRows] = await pool.query(
-        `SELECT * FROM bus WHERE bus_id = ?`,
+        `SELECT 
+           b.bus_id,
+           b.organization_id,
+           b.driver_id,
+           b.plate_number,
+           b.capacity,
+           b.company,
+           b.status,
+           u.full_name as driver_name,
+           u.phone_num as driver_phone_num
+         FROM bus b
+         LEFT JOIN users u ON b.driver_id = u.user_id 
+         WHERE b.bus_id = ?`,
         [request.bus_id]
       );
       bus = busRows.length > 0 ? busRows[0] : null;
+      
+      if (bus) {
+        console.log('Bus details for request:', {
+          bus_id: bus.bus_id,
+          plate_number: bus.plate_number,
+          driver_id: bus.driver_id,
+          driver_name: bus.driver_name,
+          driver_phone_num: bus.driver_phone_num
+        });
+      }
     }
 
     // Get schedule details if assigned
@@ -462,7 +484,8 @@ async function findOptimalSchedule(pickup_id, location_id, passenger_count) {
          b.bus_id,
          b.capacity,
          b.plate_number,
-         b.driver_name,
+         u.full_name as driver_name,
+         u.phone_num as driver_phone_num,
          b.company,
          bs.service_id,
          bs.service_date,
@@ -474,6 +497,7 @@ async function findOptimalSchedule(pickup_id, location_id, passenger_count) {
        FROM bus b
        INNER JOIN bus_services bs ON b.bus_id = bs.bus_id
        INNER JOIN pickup_location pl ON bs.pickup_id = pl.pickup_id
+       LEFT JOIN users u ON b.driver_id = u.user_id
        WHERE bs.pickup_id = ? 
          AND b.status = 'active'
          AND bs.service_date >= CURDATE()

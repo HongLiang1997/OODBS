@@ -84,6 +84,20 @@ export default function BusManagement() {
           inputType: "text",
         },
         {
+          key: "driver_email",
+          label: "Driver Email",
+          editable: true,
+          inputType: "email",
+          hidden: true, // Don't show in table
+        },
+        {
+          key: "driver_password",
+          label: "Driver Password",
+          editable: true,
+          inputType: "password",
+          hidden: true, // Don't show in table
+        },
+        {
           key: "capacity",
           label: "Capacity",
           editable: true,
