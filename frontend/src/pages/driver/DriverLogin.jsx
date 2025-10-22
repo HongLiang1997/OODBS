@@ -3,8 +3,8 @@ import "../../styles/login.css";
 import { useNavigate } from "react-router-dom";
 
 export default function DriverLogin() {
-  const [plateNumber, setPlateNumber] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
 
@@ -14,7 +14,7 @@ export default function DriverLogin() {
       const res = await fetch("http://localhost:5000/auth/driver-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plate_number: plateNumber, phone_number: phoneNumber }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (data.success) {
@@ -59,33 +59,33 @@ export default function DriverLogin() {
                   <form onSubmit={handleSubmit}>
                     <div className="row gy-3 gy-md-4 overflow-hidden">
                       <div className="col-12">
-                        <label htmlFor="plateNumber" className="form-label">
-                          Bus Plate Number <span className="text-danger">*</span>
+                        <label htmlFor="email" className="form-label">
+                          Email Address <span className="text-danger">*</span>
                         </label>
                         <input
-                          type="text"
+                          type="email"
                           className="form-control"
-                          name="plateNumber"
-                          id="plateNumber"
-                          placeholder="e.g., SBS1234A"
+                          name="email"
+                          id="email"
+                          placeholder="driver@example.com"
                           required
-                          value={plateNumber}
-                          onChange={(e) => setPlateNumber(e.target.value)}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                         />
                       </div>
                       <div className="col-12">
-                        <label htmlFor="phoneNumber" className="form-label">
-                          Phone Number <span className="text-danger">*</span>
+                        <label htmlFor="password" className="form-label">
+                          Password <span className="text-danger">*</span>
                         </label>
                         <input
-                          type="tel"
+                          type="password"
                           className="form-control"
-                          name="phoneNumber"
-                          id="phoneNumber"
-                          placeholder="+65 XXXX XXXX"
+                          name="password"
+                          id="password"
+                          placeholder="Enter your password"
                           required
-                          value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
                         />
                       </div>
                       <div className="col-12">

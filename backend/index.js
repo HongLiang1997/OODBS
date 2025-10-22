@@ -53,6 +53,9 @@ app.use('/passenger', passengerRouter);
 const routingRouter = require('./routes/routing');
 app.use('/routing', routingRouter);
 
+const driverRouter = require('./routes/driver');
+app.use('/driver', driverRouter);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);

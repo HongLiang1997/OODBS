@@ -62,34 +62,35 @@ router.post('/passenger-login', async (req, res) => {
   }
 });
 
-// POST /auth/driver-login (Driver login using plate number and phone)
+// POST /auth/driver-login (Driver login using email and password with role check)
 router.post('/driver-login', async (req, res) => {
   const pool = req.app.get('pool');
-  const { plate_number, phone_number } = req.body;
+  const { email, password } = req.body;
 
-  if (!plate_number || !phone_number) {
-    return res.status(400).json({ message: 'Plate number and phone number required.' });
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password required.' });
   }
 
   try {
-    // Query to authenticate driver: find user by phone, then check if they have a bus with the plate number
+    // Query to authenticate driver: check email, password, and role = 'driver'
     const [rows] = await pool.query(
       `SELECT 
+         u.user_id,
+         u.full_name,
+         u.email,
+         u.phone_num,
+         u.role,
+         u.organization_id,
          b.bus_id,
          b.plate_number,
          b.capacity,
          b.company,
-         b.status,
-         b.organization_id,
-         b.driver_id,
-         u.full_name as driver_name,
-         u.phone_num as driver_phone_num,
-         u.user_id
+         b.status as bus_status
        FROM users u
-       INNER JOIN bus b ON u.user_id = b.driver_id
-       WHERE u.phone_num = ? AND b.plate_number = ? AND b.status = 'active'
+       LEFT JOIN bus b ON u.user_id = b.driver_id
+       WHERE u.email = ? AND u.password_hash = ? AND u.role = 'driver'
        LIMIT 1`,
-      [phone_number, plate_number]
+      [email, password]
     );
 
     if (rows.length === 1) {
@@ -98,21 +99,23 @@ router.post('/driver-login', async (req, res) => {
       return res.json({ 
         success: true, 
         driver: {
+          user_id: driver.user_id,
+          full_name: driver.full_name,
+          email: driver.email,
+          phone_num: driver.phone_num,
+          role: driver.role,
+          organization_id: driver.organization_id,
           bus_id: driver.bus_id,
           plate_number: driver.plate_number,
-          driver_name: driver.driver_name || 'Unknown Driver', // fallback if user not found
-          driver_phone_num: driver.driver_phone_num,
           capacity: driver.capacity,
           company: driver.company,
-          status: driver.status,
-          organization_id: driver.organization_id,
-          user_id: driver.user_id
+          bus_status: driver.bus_status
         }
       });
     } else {
       return res.status(401).json({ 
         success: false, 
-        message: 'Invalid plate number or phone number, or bus is not active.' 
+        message: 'Invalid email or password, or user is not a driver.' 
       });
     }
   } catch (err) {

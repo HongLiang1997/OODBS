@@ -1,0 +1,819 @@
+/* Driver Dashboard - Simplified Single Page Layout */
+.driver-dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f8f9fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Top Header */
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1000;
+}
+
+.driver-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.driver-info h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.4rem;
+}
+
+.status-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-indicator.off-duty {
+  background-color: #6c757d;
+}
+
+.status-indicator.available {
+  background-color: #28a745;
+}
+
+.status-indicator.on-route {
+  background-color: #007bff;
+}
+
+.status-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.refresh-location-btn {
+  background: #ffc107;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: background-color 0.2s ease;
+}
+
+.refresh-location-btn:hover {
+  background: #e0a800;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: #c82333;
+}
+
+/* Map Container - Google Maps */
+.map-container {
+  flex: 1;
+  position: relative;
+  height: calc(100vh - 80px - 70px); /* Subtract header (80px) and bottom nav toggle (70px) heights */
+  margin-bottom: 70px; /* Add margin to prevent bottom nav from overlaying */
+}
+
+.google-map {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 8px;
+}
+
+/* Custom marker styles */
+.current-location-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.stop-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Navigation Status Overlay */
+.navigation-status {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.tracking {
+  background-color: #28a745;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Location Loading */
+.location-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #f8f9fa;
+  color: #6c757d;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e9ecef;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Custom Stop Markers */
+.custom-stop-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Bottom Navigation */
+.bottom-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e9ecef;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  transform: translateY(calc(100% - 60px));
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  max-height: 50vh;
+}
+
+.bottom-navigation.open {
+  transform: translateY(0);
+}
+
+.nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  cursor: pointer;
+  user-select: none;
+}
+
+.nav-toggle:hover {
+  background: #e9ecef;
+}
+
+.chevron {
+  transition: transform 0.3s ease;
+}
+
+.chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.nav-content {
+  padding: 20px;
+  max-height: calc(50vh - 60px);
+  overflow-y: auto;
+  display: flex;
+  gap: 30px;
+}
+
+.nav-section {
+  flex: 1;
+  min-width: 300px;
+}
+
+.nav-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ecf0f1;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Leaflet Map Customizations */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.route-popup {
+  min-width: 200px;
+}
+
+.route-popup h4 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.route-popup p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* Schedule Selector */
+.schedule-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-option {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.schedule-option:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+}
+
+.schedule-option.selected {
+  background: #e3f2fd;
+  border-color: #007bff;
+}
+
+.schedule-time {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #007bff;
+  margin-bottom: 8px;
+}
+
+.schedule-route strong {
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.schedule-route p {
+  margin: 5px 0 0 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+/* Status Controls */
+.status-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.status-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  color: #495057;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.status-btn:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+  color: #007bff;
+}
+
+.status-btn.active {
+  background: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.status-btn.active:hover {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+
+.nav-tabs {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+.nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 1rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #6c757d;
+  border-bottom: 3px solid transparent;
+}
+
+.nav-tab:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.nav-tab.active {
+  color: #3498db;
+  border-bottom-color: #3498db;
+  background: white;
+}
+
+.nav-tab svg {
+  font-size: 1.2rem;
+}
+
+.nav-tab span {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Tab Content */
+.tab-content {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background: white;
+}
+
+/* Routes Tab */
+.routes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.routes-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.schedule-info {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.routes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.route-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+  transition: all 0.3s ease;
+}
+
+.route-item:hover {
+  background: #e9ecef;
+  transform: translateX(2px);
+}
+
+.route-order {
+  background: #3498db;
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: 1rem;
+  flex-shrink: 0;
+}
+
+.route-details {
+  flex: 1;
+}
+
+.route-location {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+}
+
+.route-passenger {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.route-eta {
+  color: #3498db;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.route-status {
+  margin-left: 1rem;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #95a5a6;
+}
+
+.status-dot.completed {
+  background: #27ae60;
+}
+
+.status-dot.pending {
+  background: #f39c12;
+}
+
+.no-routes, .no-schedules, .no-passengers {
+  text-align: center;
+  padding: 2rem;
+  color: #7f8c8d;
+}
+
+/* Schedules Tab */
+.schedules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.schedule-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.schedule-item:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.schedule-item.selected {
+  background: #e3f2fd;
+  border-color: #3498db;
+}
+
+.schedule-time {
+  margin-right: 1rem;
+  text-align: center;
+}
+
+.departure-time {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.arrival-time {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.schedule-details {
+  flex: 1;
+}
+
+.schedule-date {
+  font-weight: 500;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+}
+
+.schedule-shifts {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.shift-badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.shift-badge.am {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.shift-badge.pm {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.schedule-status {
+  margin-left: 1rem;
+}
+
+.status-badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.completed {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+/* Passengers Tab */
+.passengers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.passenger-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #27ae60;
+}
+
+.passenger-order {
+  background: #27ae60;
+  color: white;
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  font-weight: bold;
+  margin-right: 1rem;
+  font-size: 0.9rem;
+}
+
+.passenger-info {
+  flex: 1;
+}
+
+.passenger-name {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+}
+
+.passenger-details {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.passenger-count {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.passenger-destination {
+  color: #3498db;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.phone-number {
+  color: #7f8c8d;
+  font-size: 0.85rem;
+}
+
+.passenger-status {
+  margin-left: 1rem;
+}
+
+.pickup-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #3498db;
+  color: white;
+}
+
+.pickup-btn:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.pickup-btn.completed {
+  background: #27ae60;
+  cursor: default;
+}
+
+.pickup-btn.completed:hover {
+  transform: none;
+}
+
+/* Loading States */
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #7f8c8d;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .top-header {
+    padding: 10px 15px;
+  }
+  
+  .driver-info h2 {
+    font-size: 1.2rem;
+  }
+  
+  .nav-content {
+    flex-direction: column;
+    gap: 20px;
+    padding: 15px;
+  }
+  
+  .nav-section {
+    min-width: auto;
+  }
+  
+  .status-controls {
+    justify-content: center;
+  }
+  
+  .status-btn {
+    min-width: 100px;
+    padding: 10px 15px;
+  }
+  
+  .bottom-navigation {
+    max-height: 60vh;
+  }
+  
+  .nav-content {
+    max-height: calc(60vh - 60px);
+  }
+}
+
+@media (max-width: 480px) {
+  .top-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 15px;
+  }
+  
+  .driver-info {
+    justify-content: center;
+  }
+  
+  .logout-btn {
+    align-self: center;
+  }
+  
+  .schedule-option {
+    padding: 12px;
+  }
+  
+  .status-btn {
+    min-width: 80px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Tablet Landscape Optimizations */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .nav-content {
+    flex-direction: row;
+    gap: 40px;
+  }
+  
+  .bottom-navigation {
+    max-height: 45vh;
+  }
+  
+  .nav-content {
+    max-height: calc(45vh - 60px);
+  }
+}

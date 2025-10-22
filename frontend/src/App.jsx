@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PassengerLogin from "./pages/passenger/PassengerLogin";
-import PassengerDashboard from "./pages/passenger/passengerDashboard";
+import PassengerDashboard from "./pages/passenger/PassengerDashboard";
 
 import DriverLogin from "./pages/driver/DriverLogin";
-import DriverDashboard from "./pages/driver/DriveDashboard";
+import DriverDashboard from "./pages/driver/DriverDashboard";
 
 import AdminLogin from "./pages/admin/AdminLogin";
 import RequireAuth from "./components/admin/RequireAuth";
