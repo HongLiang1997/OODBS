@@ -67,3 +67,11 @@ pnpm-lock.yaml
 # Temporary folders
 tmp/
 temp/
+
+# Large data files (CSV datasets)
+backend/traffic/*.csv
+*.csv
+
+# Generated visualization files
+backend/scripts/traffic_threshold_visualization.html
+backend/scripts/traffic_output.txt
