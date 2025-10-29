@@ -393,7 +393,7 @@ async function findOptimalSchedule(pool, pickup_id, location_id, passenger_count
         console.log(`\n=== FINDING OPTIMAL SCHEDULE ===`);
         console.log(`Pickup ID: ${pickup_id}, Destination ID: ${location_id}, Passengers: ${passenger_count}`);
         
-        // Find all active buses that service the same pickup location with onboarding schedules
+        // First, find active buses with existing onboarding schedules
         const [candidateBuses] = await pool.query(
             `SELECT DISTINCT 
              b.bus_id,
@@ -426,17 +426,80 @@ async function findOptimalSchedule(pool, pickup_id, location_id, passenger_count
             [pickup_id]
         );
 
-        console.log(`Found ${candidateBuses.length} candidate buses`);
-        
+        // If no onboarding buses found, look for active buses without current schedules
+        let busesWithoutSchedule = [];
         if (candidateBuses.length === 0) {
+            console.log('No buses with onboarding schedules found, checking for active buses without schedules...');
+            
+            const [activeBusesWithoutSchedule] = await pool.query(
+                `SELECT DISTINCT 
+                 b.bus_id,
+                 b.capacity,
+                 b.plate_number,
+                 u.full_name as driver_name,
+                 u.phone_num as driver_phone_num,
+                 b.company,
+                 bs.service_id,
+                 bs.service_date,
+                 bs.isAmShift,
+                 bs.isPmShift,
+                 bs.pickup_id,
+                 pl.name as pickup_name,
+                 pl.latitude as pickup_lat,
+                 pl.longitude as pickup_lng
+               FROM bus b
+               INNER JOIN bus_services bs ON b.bus_id = bs.bus_id
+               INNER JOIN pickup_location pl ON bs.pickup_id = pl.pickup_id
+               LEFT JOIN users u ON b.driver_id = u.user_id
+               LEFT JOIN schedule s ON bs.service_id = s.service_id
+               WHERE bs.pickup_id = ? 
+                 AND b.status = 'active'
+                 AND bs.service_date >= CURDATE()
+                 AND (s.schedule_id IS NULL OR s.status NOT IN ('onboarding', 'ongoing'))
+               GROUP BY b.bus_id, bs.service_id
+               ORDER BY bs.service_date ASC, b.bus_id ASC`,
+                [pickup_id]
+            );
+
+            // Create new onboarding schedules for these buses
+            for (const bus of activeBusesWithoutSchedule) {
+                try {
+                    console.log(`Creating new onboarding schedule for bus ${bus.plate_number} (service_id: ${bus.service_id})`);
+                    
+                    const [scheduleResult] = await pool.query(
+                        `INSERT INTO schedule (service_id, departure_time, arrival_time, status)
+                       VALUES (?, NOW() + INTERVAL 30 MINUTE, NOW() + INTERVAL 3 HOUR, 'onboarding')`,
+                        [bus.service_id]
+                    );
+                    
+                    // Add schedule info to bus object
+                    bus.departure_time = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes from now
+                    bus.arrival_time = new Date(Date.now() + 3 * 60 * 60 * 1000); // 3 hours from now
+                    bus.schedule_status = 'onboarding';
+                    bus.schedule_id = scheduleResult.insertId;
+                    
+                    busesWithoutSchedule.push(bus);
+                    
+                    console.log(`✅ Created schedule ${scheduleResult.insertId} for service ${bus.service_id}`);
+                } catch (error) {
+                    console.error(`Failed to create schedule for service ${bus.service_id}:`, error);
+                }
+            }
+        }
+        
+        // Combine both sets of candidate buses
+        const allCandidateBuses = [...candidateBuses, ...busesWithoutSchedule];
+
+        console.log(`Found ${allCandidateBuses.length} candidate buses (${candidateBuses.length} existing onboarding + ${busesWithoutSchedule.length} newly created)`);
+        
+        if (allCandidateBuses.length === 0) {
             console.log('❌ No buses found. Possible reasons:');
             console.log('   - No buses servicing this pickup location');
-            console.log('   - All bus departure times are too soon (< 5 minutes)');
             console.log('   - All buses are inactive');
             console.log('   - Service date is in the past');
             return {
                 success: false,
-                reason: "No active buses found servicing this pickup location with adequate departure time"
+                reason: "No active buses found servicing this pickup location"
             };
         }
 
@@ -445,7 +508,7 @@ async function findOptimalSchedule(pool, pickup_id, location_id, passenger_count
         const currentTime = new Date();
         const minimumBufferMinutes = -10; // Allow booking up to 10 minutes after departure for testing
         
-        candidateBuses.forEach((bus, idx) => {
+        allCandidateBuses.forEach((bus, idx) => {
             let departureTime = null;
             
             // If schedule exists, use schedule departure time

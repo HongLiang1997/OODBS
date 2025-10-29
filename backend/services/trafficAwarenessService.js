@@ -15,12 +15,12 @@ class TrafficAwarenessService {
         this.isInitialized = false;
         this.impactRadius = 0.5; // km - traffic impact radius
         
-        // Data-driven thresholds (based on Singapore transport data analysis)
+        // FIXED: More reasonable thresholds based on average traffic per route
         this.riskThresholds = {
-            minimal: 100,
-            low: 543,      // 50th percentile
-            medium: 1340,  // 75th percentile
-            high: 2618,    // 90th percentile
+            minimal: 5,    // Very light traffic
+            low: 15,       // Light traffic
+            medium: 40,    // Moderate traffic  
+            high: 80,      // Heavy traffic
         };
     }
 
@@ -273,9 +273,11 @@ class TrafficAwarenessService {
         const avgVolume = Math.round(totalVolume / nearbyRoutes.length);
         const adjustedVolume = Math.round(avgVolume * peakFactor);
         
-        const baseDelay = Math.round(totalVolume / 10); // Base formula
-        const expectedDelay = Math.round(baseDelay * peakFactor);
-        const delayVariance = Math.round(expectedDelay * 0.4);
+        // FIXED: Use average volume instead of total volume for delay calculation
+        // Base delay should be proportional to average congestion, not total routes found
+        const baseDelay = Math.round(avgVolume / 50); // 1 minute per 50 average trips
+        const expectedDelay = Math.min(Math.round(baseDelay * peakFactor), 30); // Cap at 30 minutes
+        const delayVariance = Math.round(expectedDelay * 0.3);
 
         return {
             riskLevel: this.calculateRiskLevel(adjustedVolume),
@@ -429,8 +431,9 @@ class TrafficAwarenessService {
      * Calculate expected delay in minutes
      */
     calculateExpectedDelay(volume) {
-        const baseDelay = volume / 100; // Base formula: 1 minute per 100 trips
-        return Math.min(Math.round(baseDelay), 60); // Cap at 60 minutes
+        // FIXED: More reasonable delay calculation
+        const baseDelay = volume / 200; // Base formula: 1 minute per 200 trips
+        return Math.min(Math.round(baseDelay), 25); // Cap at 25 minutes for single location
     }
 
     /**

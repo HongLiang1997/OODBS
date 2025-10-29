@@ -68,26 +68,51 @@ router.get("/route/:schedule_id", async (req, res) => {
   const { schedule_id } = req.params;
   
   try {
+    // Get pickup location information
+    const [pickupInfo] = await pool.query(`
+      SELECT DISTINCT
+        pl.pickup_id,
+        pl.name,
+        pl.latitude,
+        pl.longitude
+      FROM schedule s
+      JOIN bus_services bs ON s.service_id = bs.service_id
+      JOIN pickup_location pl ON bs.pickup_id = pl.pickup_id
+      WHERE s.schedule_id = ?
+    `, [schedule_id]);
+    
+    // Get unique routes by schedule_id - prevent duplicate request_ids
     const [routes] = await pool.query(`
       SELECT 
-        r.*,
+        MIN(r.route_id) as route_id,
+        r.schedule_id,
+        r.request_id,
+        r.stop_order,
+        r.eta,
         pr.passenger_count,
         u.full_name as passenger_name,
         u.phone_num as passenger_phone,
-        ol.name as destination_name,
+        ol.name as location_name,
         ol.latitude,
         ol.longitude,
         t.name as tier_name
       FROM routes r
-      JOIN passenger_requests pr ON r.request_id = pr.request_id
-      JOIN users u ON pr.user_id = u.user_id
-      JOIN organization_locations ol ON pr.location_id = ol.location_id
+      LEFT JOIN passenger_requests pr ON r.request_id = pr.request_id
+      LEFT JOIN users u ON pr.user_id = u.user_id
+      LEFT JOIN organization_locations ol ON pr.location_id = ol.location_id
       LEFT JOIN tier t ON r.tier_id = t.tier_id
       WHERE r.schedule_id = ?
+      GROUP BY r.request_id, r.stop_order, r.schedule_id, r.eta, pr.passenger_count, 
+               u.full_name, u.phone_num, ol.name, ol.latitude, ol.longitude, t.name
       ORDER BY r.stop_order
     `, [schedule_id]);
     
-    res.json({ routes });
+    const pickup_location = pickupInfo.length > 0 ? pickupInfo[0] : null;
+    
+    res.json({ 
+      routes,
+      pickup_location 
+    });
   } catch (err) {
     console.error('Error fetching route data:', err);
     res.status(500).json({ error: err.message });

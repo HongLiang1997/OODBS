@@ -150,102 +150,124 @@ export default function DriverDashboard() {
       return;
     }
 
-    // Get current position
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        console.log('Got initial position:', position.coords);
-        const { latitude, longitude } = position.coords;
-        const newLocation = [latitude, longitude];
-        setCurrentLocation(newLocation);
-        setLocationError(null);
-        setGpsLoading(false);
-        setShowSkipButton(false);
-        
-        // Center map on actual location
-        mapInstance.setCenter({ lat: latitude, lng: longitude });
-        
-        // Update marker position
-        if (currentLocationMarker) {
-          currentLocationMarker.setPosition({ lat: latitude, lng: longitude });
-        }
-        
-        // Now that we have GPS location, draw the route if there's a pending schedule
-        console.log('GPS success - Checking for pending schedule. Current pendingScheduleId:', pendingScheduleRef.current);
-        if (pendingScheduleRef.current) {
-          console.log('GPS location obtained - Drawing route now for schedule:', pendingScheduleRef.current);
-          console.log('Using actual GPS coordinates:', latitude, longitude);
-          const scheduleToFetch = pendingScheduleRef.current;
-          pendingScheduleRef.current = null; // Clear pending route
-          // Pass the actual GPS coordinates to route creation
-          fetchRouteData(scheduleToFetch, [latitude, longitude]);
-        } else {
-          console.log('No pending schedule found after GPS success');
-        }
-        
-        // Start continuous tracking with heading for driving navigation (after a delay)
-        setTimeout(() => {
-          const id = navigator.geolocation.watchPosition(
-            (position) => {
-              const { latitude, longitude, heading } = position.coords;
-              setCurrentLocation([latitude, longitude]);
-              
-              // Only pan if we're actively tracking (don't interfere with initial zoom)
-              if (isTracking) {
-                mapInstance.panTo({ lat: latitude, lng: longitude });
+    // Show skip button after 3 seconds if GPS is taking too long
+    const skipTimer = setTimeout(() => {
+      setShowSkipButton(true);
+    }, 3000);
+
+    // Try getting position with progressive timeout approach
+    const tryGetPosition = (attempt = 1, maxAttempts = 3) => {
+      console.log(`GPS attempt ${attempt}/${maxAttempts}`);
+      
+      const timeoutForAttempt = attempt === 1 ? 8000 : attempt === 2 ? 15000 : 25000;
+      const accuracyForAttempt = attempt === 1 ? true : attempt === 2 ? true : false;
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log(`GPS success on attempt ${attempt}:`, position.coords);
+          clearTimeout(skipTimer);
+          
+          const { latitude, longitude } = position.coords;
+          const newLocation = [latitude, longitude];
+          setCurrentLocation(newLocation);
+          setLocationError(null);
+          setGpsLoading(false);
+          setShowSkipButton(false);
+          
+          // Center map on actual location
+          mapInstance.setCenter({ lat: latitude, lng: longitude });
+          
+          // Update marker position
+          if (currentLocationMarker) {
+            currentLocationMarker.setPosition({ lat: latitude, lng: longitude });
+          }
+          
+          // Now that we have GPS location, draw the route if there's a pending schedule
+          console.log('GPS success - Checking for pending schedule. Current pendingScheduleId:', pendingScheduleRef.current);
+          if (pendingScheduleRef.current) {
+            console.log('GPS location obtained - Drawing route now for schedule:', pendingScheduleRef.current);
+            console.log('Using actual GPS coordinates:', latitude, longitude);
+            const scheduleToFetch = pendingScheduleRef.current;
+            pendingScheduleRef.current = null; // Clear pending route
+            // Pass the actual GPS coordinates to route creation
+            fetchRouteData(scheduleToFetch, [latitude, longitude]);
+          } else {
+            console.log('No pending schedule found after GPS success');
+          }
+          
+          // Start continuous tracking with heading for driving navigation (after a delay)
+          setTimeout(() => {
+            const id = navigator.geolocation.watchPosition(
+              (position) => {
+                const { latitude, longitude, heading } = position.coords;
+                setCurrentLocation([latitude, longitude]);
+                
+                // Only pan if we're actively tracking (don't interfere with initial zoom)
+                if (isTracking) {
+                  mapInstance.panTo({ lat: latitude, lng: longitude });
+                }
+                
+                // Update map heading if available (face the direction of travel)
+                if (heading !== null && heading !== undefined) {
+                  mapInstance.setHeading(heading);
+                }
+                
+                // Update marker with heading
+                updateCurrentLocationMarker(latitude, longitude, heading);
+              },
+              (error) => {
+                console.error('GPS tracking error:', error);
+                setLocationError('GPS tracking unavailable');
+              },
+              {
+                enableHighAccuracy: true,
+                maximumAge: 5000, // More frequent updates for driving
+                timeout: 10000
               }
-              
-              // Update map heading if available (face the direction of travel)
-              if (heading !== null && heading !== undefined) {
-                mapInstance.setHeading(heading);
-              }
-              
-              // Update marker with heading
-              updateCurrentLocationMarker(latitude, longitude, heading);
-            },
-          (error) => {
-            console.error('GPS tracking error:', error);
-            setLocationError('GPS tracking unavailable');
-            },
-            (error) => {
-              console.error('GPS tracking error:', error);
-              setLocationError('GPS tracking unavailable');
-            },
-            {
-              enableHighAccuracy: true,
-              maximumAge: 2000, // More frequent updates for driving
-              timeout: 8000
+            );
+            setWatchId(id);
+            setIsTracking(true);
+          }, 2000); // Wait 2 seconds before starting continuous tracking
+        },
+        (error) => {
+          console.error(`GPS attempt ${attempt} failed:`, error);
+          
+          if (attempt < maxAttempts) {
+            console.log(`Retrying GPS... attempt ${attempt + 1}`);
+            setTimeout(() => tryGetPosition(attempt + 1, maxAttempts), 1000);
+          } else {
+            clearTimeout(skipTimer);
+            
+            let errorMsg = 'Could not get your location';
+            
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                errorMsg = 'Location access denied. Please enable location access in your browser settings.';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMsg = 'GPS unavailable. Try moving to an area with better GPS signal.';
+                break;
+              case error.TIMEOUT:
+                errorMsg = 'GPS timeout. This may be due to poor GPS signal or being indoors.';
+                break;
             }
-          );
-          setWatchId(id);
-          setIsTracking(true);
-        }, 2000); // Wait 2 seconds before starting continuous tracking
-      },
-      (error) => {
-        console.error('Initial location error:', error);
-        let errorMsg = 'Could not get your location';
-        
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            errorMsg = 'Location access denied. Please allow location access.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMsg = 'Your location is currently unavailable.';
-            break;
-          case error.TIMEOUT:
-            errorMsg = 'Location request timed out.';
-            break;
+            
+            setLocationError(errorMsg);
+            setGpsLoading(false);
+            setShowSkipButton(true); // Always show skip button on final failure
+            setIsTracking(false);
+          }
+        },
+        {
+          enableHighAccuracy: accuracyForAttempt,
+          timeout: timeoutForAttempt,
+          maximumAge: attempt === 1 ? 30000 : 60000 // Allow older cached positions for retries
         }
-        
-        setLocationError(errorMsg);
-        setGpsLoading(false);
-        setIsTracking(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 30000
-      }
-    );
+      );
+    };
+
+    // Start the progressive GPS attempts
+    tryGetPosition();
   };
 
   const addCurrentLocationMarker = (mapInstance, googleMaps, lat, lng) => {
@@ -297,7 +319,7 @@ export default function DriverDashboard() {
 
   // Skip location and use default
   const skipLocationAndContinue = () => {
-    console.log('Skipping location, using default');
+    console.log('Skipping GPS location, using Singapore default coordinates');
     setLocationError(null);
     setShowSkipButton(false);
     setGpsLoading(false);
@@ -310,12 +332,26 @@ export default function DriverDashboard() {
     }
     
     if (map && window.google && window.google.maps) {
-      const lat = 1.3521;
-      const lng = 103.8198;
-      map.setCenter({ lat, lng });
+      const defaultLat = 1.3521; // Singapore default
+      const defaultLng = 103.8198;
+      
+      // Update current location state
+      setCurrentLocation([defaultLat, defaultLng]);
+      
+      map.setCenter({ lat: defaultLat, lng: defaultLng });
+      
       // Update the existing marker instead of adding a new one
       if (currentLocationMarker) {
-        currentLocationMarker.setPosition({ lat, lng });
+        currentLocationMarker.setPosition({ lat: defaultLat, lng: defaultLng });
+      }
+      
+      // If there's a pending schedule, draw the route now with default location
+      if (pendingScheduleRef.current) {
+        console.log('GPS skipped - Drawing route with default location for schedule:', pendingScheduleRef.current);
+        const scheduleToFetch = pendingScheduleRef.current;
+        pendingScheduleRef.current = null; // Clear pending route
+        // Use default Singapore coordinates
+        fetchRouteData(scheduleToFetch, [defaultLat, defaultLng]);
       }
     }
   };
@@ -370,13 +406,15 @@ export default function DriverDashboard() {
         const data = await response.json();
         console.log('Route data received:', data);
         const stops = data.routes || [];
+        const pickupLocation = data.pickup_location || null;
         
         if (map && stops.length > 0) {
-          await createNavigationRoute(stops, actualGpsLocation);
+          await createNavigationRoute(stops, actualGpsLocation, pickupLocation);
         }
         
         setSelectedRoute({
           stops,
+          pickupLocation,
           isRouted: true
         });
       }
@@ -385,126 +423,225 @@ export default function DriverDashboard() {
     }
   };
 
-  const createNavigationRoute = async (stops, actualGpsLocation = null) => {
+  const createNavigationRoute = async (stops, actualGpsLocation = null, pickupLocation = null) => {
     if (!map || !directionsService || !directionsRenderer) return;
     
-    console.log('Creating route with stops:', stops.length);
-    console.log('Using GPS location:', actualGpsLocation || currentLocation);
-    setRoutingService('Driving Navigation');
+    console.log('=== SIMPLE ROUTE DEBUGGING ===');
+    console.log('Raw route data from database:', stops);
+    console.log('Pickup location:', pickupLocation);
+    setRoutingService('Driver Navigation');
     
     // Use actual GPS location if provided, otherwise fall back to current state
     const startLocation = actualGpsLocation || currentLocation;
     
-    // Add numbered stop markers first
-    addStopMarkers(stops);
+    // Clear any existing routes
+    clearAllRoutes();
     
-    if (stops.length > 0) {
-      const validStops = stops.filter(stop => stop.latitude && stop.longitude);
+    // Just sort by stop_order - that's it!
+    const sortedStops = [...stops].sort((a, b) => a.stop_order - b.stop_order);
+    console.log('Stops in order:', sortedStops.map(s => `${s.stop_order}: ${s.location_name} (${s.passenger_name})`));
+    
+    if (pickupLocation && pickupLocation.latitude && pickupLocation.longitude) {
+      // Phase 1: Driver location → Pickup location (YELLOW route)
+      console.log('Drawing YELLOW route from driver to pickup');
+      drawDriverToPickupRoute(startLocation, pickupLocation);
       
-      if (validStops.length > 0) {
-        // Create waypoints from your pre-calculated sequence (maintain order)
-        const waypoints = validStops.slice(0, -1).map(stop => ({
-          location: { lat: stop.latitude, lng: stop.longitude },
-          stopover: true
-        }));
+      // Add pickup location marker
+      addPickupMarker(pickupLocation);
+      
+      // Phase 2: Pickup location → All destinations (BLUE route) in stop_order
+      if (sortedStops.length > 0) {
+        console.log('Drawing BLUE route through destinations in stop_order');
         
-        const destination = validStops[validStops.length - 1];
-        
-        // Draw yellow route from current location to first stop (on roads)
-        const firstStop = validStops[0];
-        drawStartingRoute(startLocation, [firstStop.latitude, firstStop.longitude]);
-        
-        // Create route from first stop to destination (excluding starting point)
-        const routeWaypoints = validStops.slice(1, -1).map(stop => ({
-          location: { lat: stop.latitude, lng: stop.longitude },
-          stopover: true
-        }));
-        
-        const request = {
-          origin: { lat: firstStop.latitude, lng: firstStop.longitude }, // Start from first stop
-          destination: { lat: destination.latitude, lng: destination.longitude },
-          waypoints: routeWaypoints,
-          travelMode: window.google.maps.TravelMode.DRIVING,
-          optimizeWaypoints: false, // Keep your pre-calculated sequence
-          avoidHighways: false,
-          avoidTolls: false
-        };
-        
-        directionsService.route(request, (result, status) => {
-          if (status === 'OK') {
-            directionsRenderer.setDirections(result);
-            console.log('Driving route created successfully');
-            
-            // Zoom to user's actual GPS location when route is loaded
-            console.log('Zooming to actual GPS location:', startLocation);
-            map.setCenter({ lat: startLocation[0], lng: startLocation[1] });
-            map.setZoom(19); // Close zoom for driving navigation
-          } else {
-            console.error('Directions request failed:', status);
-            // Fallback: Draw yellow route to first stop, then simple polyline for rest
-            const firstStop = validStops[0];
-            drawStartingRoute(startLocation, [firstStop.latitude, firstStop.longitude]);
-            createSimplePolyline(validStops.slice(1)); // Route from first stop onward
-            
-            // Still zoom to user's actual location on fallback
-            console.log('Fallback: Zooming to actual GPS location:', startLocation);
-            map.setCenter({ lat: startLocation[0], lng: startLocation[1] });
-            map.setZoom(19);
-          }
-        });
+        if (sortedStops.length === 1) {
+          // Single destination
+          drawPickupToDestinationsRoute(pickupLocation, sortedStops[0], []);
+        } else {
+          // Multiple destinations - pickup → stop 1 → stop 2 → ... → final stop
+          const finalDestination = sortedStops[sortedStops.length - 1];
+          const waypoints = sortedStops.slice(0, -1);
+          drawPickupToDestinationsRoute(pickupLocation, finalDestination, waypoints);
+        }
       }
     }
+    
+    // Add destination markers with their stop_order numbers
+    addDestinationMarkers(sortedStops);
+    
+    // Zoom to driver location
+    map.setCenter({ lat: startLocation[0], lng: startLocation[1] });
+    map.setZoom(17);
+    console.log('=== ROUTE DEBUGGING END ===');
   };
   
-  const drawStartingRoute = (startLocation, firstStopLocation) => {
-    // Use Google Directions API for yellow route on actual roads
+  const drawDriverToPickupRoute = (driverLocation, pickupLocation) => {
+    // YELLOW route: Driver current location → Pickup location
     if (!directionsService) return;
     
-    console.log('Drawing yellow starting route on roads from GPS to first stop');
+    console.log('Drawing YELLOW route from driver to pickup location');
     
-    // Create a separate DirectionsRenderer for the yellow starting route
-    const startingRouteRenderer = new window.google.maps.DirectionsRenderer({
-      suppressMarkers: true, // Hide A,B markers
-      preserveViewport: true, // Don't change zoom
+    // Clear any existing driver-to-pickup renderer
+    if (window.driverToPickupRenderer) {
+      window.driverToPickupRenderer.setMap(null);
+    }
+    
+    const driverToPickupRenderer = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      preserveViewport: true,
       polylineOptions: {
-        strokeColor: '#FFD700', // Yellow/Gold color
+        strokeColor: '#FFD700', // YELLOW/Gold for driver → pickup
         strokeOpacity: 0.9,
-        strokeWeight: 5, // Thicker than main route
-        zIndex: 1 // Below main route
+        strokeWeight: 6,
+        zIndex: 3 // Top priority
       }
     });
     
-    startingRouteRenderer.setMap(map);
+    driverToPickupRenderer.setMap(map);
+    window.driverToPickupRenderer = driverToPickupRenderer;
     
-    const startingRequest = {
-      origin: { lat: startLocation[0], lng: startLocation[1] },
-      destination: { lat: firstStopLocation[0], lng: firstStopLocation[1] },
+    const driverToPickupRequest = {
+      origin: { lat: driverLocation[0], lng: driverLocation[1] },
+      destination: { lat: pickupLocation.latitude, lng: pickupLocation.longitude },
       travelMode: window.google.maps.TravelMode.DRIVING,
       avoidHighways: false,
       avoidTolls: false
     };
     
-    directionsService.route(startingRequest, (result, status) => {
+    directionsService.route(driverToPickupRequest, (result, status) => {
       if (status === 'OK') {
-        startingRouteRenderer.setDirections(result);
-        console.log('Yellow starting route drawn successfully on roads');
+        driverToPickupRenderer.setDirections(result);
+        console.log('✅ YELLOW driver-to-pickup route drawn successfully');
       } else {
-        console.error('Starting route request failed:', status);
-        // Fallback to straight line if directions fail
-        new window.google.maps.Polyline({
-          path: [
-            { lat: startLocation[0], lng: startLocation[1] },
-            { lat: firstStopLocation[0], lng: firstStopLocation[1] }
-          ],
-          geodesic: true,
-          strokeColor: '#FFD700',
-          strokeOpacity: 0.9,
-          strokeWeight: 5,
-          map: map,
-          zIndex: 1
-        });
+        console.error('❌ Driver-to-pickup route failed:', status);
+        // Fallback: draw straight line
+        drawStraightLine(driverLocation, pickupLocation, '#FFD700', 6);
       }
     });
+  };
+
+  const drawPickupToDestinationsRoute = (pickupLocation, finalDestination, waypoints) => {
+    // BLUE route: Pickup location → All destinations in stop order
+    if (!directionsService) return;
+    
+    console.log('Drawing BLUE route from pickup to destinations in correct order');
+    console.log('Pickup location:', pickupLocation);
+    console.log('Waypoints (in stop_order):', waypoints.map(w => `${w.stop_order}: ${w.location_name}`));
+    console.log('Final destination:', `${finalDestination.stop_order}: ${finalDestination.location_name}`);
+    
+    // Clear any existing pickup-to-destinations renderer
+    if (window.pickupToDestinationsRenderer) {
+      window.pickupToDestinationsRenderer.setMap(null);
+    }
+    
+    const pickupToDestinationsRenderer = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      preserveViewport: true,
+      polylineOptions: {
+        strokeColor: '#007bff', // BLUE for pickup → destinations
+        strokeOpacity: 0.8,
+        strokeWeight: 4,
+        zIndex: 2
+      }
+    });
+    
+    pickupToDestinationsRenderer.setMap(map);
+    window.pickupToDestinationsRenderer = pickupToDestinationsRenderer;
+    
+    // Convert waypoints to Google Maps format, maintaining stop_order
+    const routeWaypoints = waypoints.map(stop => ({
+      location: { lat: stop.latitude, lng: stop.longitude },
+      stopover: true
+    }));
+    
+    console.log(`Route: Pickup → ${waypoints.length} waypoints → Final destination`);
+    
+    const pickupToDestinationsRequest = {
+      origin: { lat: pickupLocation.latitude, lng: pickupLocation.longitude },
+      destination: { lat: finalDestination.latitude, lng: finalDestination.longitude },
+      waypoints: routeWaypoints,
+      travelMode: window.google.maps.TravelMode.DRIVING,
+      optimizeWaypoints: false, // Keep original order - do NOT optimize
+      avoidHighways: false,
+      avoidTolls: false
+    };
+    
+    directionsService.route(pickupToDestinationsRequest, (result, status) => {
+      if (status === 'OK') {
+        pickupToDestinationsRenderer.setDirections(result);
+        console.log('✅ BLUE pickup-to-destinations route drawn successfully following stop_order');
+        
+        // Log the route sequence for verification
+        const route = result.routes[0];
+        if (route && route.legs) {
+          console.log(`Route has ${route.legs.length} legs (segments between stops)`);
+          route.legs.forEach((leg, index) => {
+            console.log(`  Leg ${index + 1}: ${leg.start_address} → ${leg.end_address}`);
+          });
+        }
+      } else {
+        console.error('❌ Pickup-to-destinations route failed:', status);
+        // Fallback: draw straight lines between stops in correct order
+        const allStops = [pickupLocation, ...waypoints, finalDestination];
+        console.log('Fallback: Drawing straight lines in order:', allStops.map((stop, i) => 
+          i === 0 ? 'Pickup' : `${stop.stop_order}: ${stop.location_name}`
+        ));
+        
+        for (let i = 0; i < allStops.length - 1; i++) {
+          drawStraightLine(
+            [allStops[i].latitude, allStops[i].longitude],
+            [allStops[i + 1].latitude, allStops[i + 1].longitude],
+            '#007bff',
+            4
+          );
+        }
+      }
+    });
+  };
+
+  const drawStraightLine = (startLocation, endLocation, color, weight) => {
+    if (!window.routePolylines) window.routePolylines = [];
+    
+    const polyline = new window.google.maps.Polyline({
+      path: [
+        { lat: startLocation[0], lng: startLocation[1] },
+        { lat: endLocation[0], lng: endLocation[1] }
+      ],
+      geodesic: true,
+      strokeColor: color,
+      strokeOpacity: 0.9,
+      strokeWeight: weight,
+      map: map,
+      zIndex: weight === 6 ? 3 : 2
+    });
+    
+    window.routePolylines.push(polyline);
+  };
+
+  const clearAllRoutes = () => {
+    // Clear main directions renderer
+    if (directionsRenderer) {
+      directionsRenderer.setDirections({routes: []});
+    }
+    
+    // Clear driver-to-pickup renderer
+    if (window.driverToPickupRenderer) {
+      window.driverToPickupRenderer.setMap(null);
+      window.driverToPickupRenderer = null;
+    }
+    
+    // Clear pickup-to-destinations renderer
+    if (window.pickupToDestinationsRenderer) {
+      window.pickupToDestinationsRenderer.setMap(null);
+      window.pickupToDestinationsRenderer = null;
+    }
+    
+    // Clear any polylines
+    if (window.routePolylines) {
+      window.routePolylines.forEach(polyline => polyline.setMap(null));
+      window.routePolylines = [];
+    }
+    
+    console.log('🧹 Cleared all existing routes');
   };
   
   const createSimplePolyline = (stops) => {
@@ -523,41 +660,137 @@ export default function DriverDashboard() {
     });
   };
   
-  const addStopMarkers = (stops) => {
+  const addPickupMarker = (pickupLocation) => {
+    // Clear existing pickup marker
+    if (window.pickupMarker) {
+      window.pickupMarker.setMap(null);
+    }
+    
+    // Add pickup location marker (different style)
+    const pickupMarker = new window.google.maps.Marker({
+      position: { lat: pickupLocation.latitude, lng: pickupLocation.longitude },
+      map: map,
+      label: {
+        text: 'P',
+        color: 'white',
+        fontWeight: 'bold'
+      },
+      icon: {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 18,
+        fillColor: '#FF6B00', // Orange for pickup
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 3
+      },
+      title: `Pickup: ${pickupLocation.name}`
+    });
+    
+    const pickupInfoWindow = new window.google.maps.InfoWindow({
+      content: `
+        <div style="padding: 10px; text-align: center;">
+          <strong>🚌 Pickup Location</strong><br/>
+          <span style="color: #FF6B00; font-weight: bold;">${pickupLocation.name}</span>
+        </div>
+      `
+    });
+    
+    pickupMarker.addListener('click', () => {
+      pickupInfoWindow.open(map, pickupMarker);
+    });
+    
+    window.pickupMarker = pickupMarker;
+  };
+
+  const addStopMarkers = (stops, pickupLocation = null) => {
     // Clear existing markers
     if (window.stopMarkers) {
       window.stopMarkers.forEach(marker => marker.setMap(null));
     }
     window.stopMarkers = [];
     
-    // Add new markers
-    stops.forEach((stop, index) => {
+    // Add destination markers (renumbered from 1)
+    let destinationNumber = 1;
+    stops.forEach((stop) => {
       if (stop.latitude && stop.longitude) {
         const marker = new window.google.maps.Marker({
           position: { lat: stop.latitude, lng: stop.longitude },
           map: map,
           label: {
-            text: (index + 1).toString(),
+            text: destinationNumber.toString(),
             color: 'white',
             fontWeight: 'bold'
           },
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
             scale: 15,
-            fillColor: '#28a745',
+            fillColor: '#007bff', // Blue for destinations
             fillOpacity: 1,
             strokeColor: '#ffffff',
             strokeWeight: 2
           },
-          title: `Stop ${index + 1}: ${stop.location_name || 'Destination'}`
+          title: `Destination ${destinationNumber}: ${stop.location_name || 'Destination'}`
+        });
+        
+        // Enhanced popup with passenger info and destination name
+        const passengerInfo = stop.passenger_name ? 
+          `<div style="margin-top: 5px; font-size: 0.9em; color: #666;">👤 ${stop.passenger_name}</div>` : '';
+        
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: `
+            <div style="padding: 8px; text-align: center;">
+              <strong style="color: #007bff;">📍 ${stop.location_name || 'Destination'}</strong>
+              ${passengerInfo}
+            </div>
+          `
+        });
+        
+        marker.addListener('click', () => {
+          infoWindow.open(map, marker);
+        });
+        
+        window.stopMarkers.push(marker);
+        destinationNumber++;
+      }
+    });
+    
+    console.log(`Added ${destinationNumber - 1} destination markers`);
+  };
+
+  const addDestinationMarkers = (stops) => {
+    // Clear existing markers
+    if (window.stopMarkers) {
+      window.stopMarkers.forEach(marker => marker.setMap(null));
+    }
+    window.stopMarkers = [];
+    
+    // Add destination markers using stop_order from database
+    stops.forEach((stop) => {
+      if (stop.latitude && stop.longitude) {
+        const marker = new window.google.maps.Marker({
+          position: { lat: stop.latitude, lng: stop.longitude },
+          map: map,
+          label: {
+            text: stop.stop_order.toString(),
+            color: 'white',
+            fontWeight: 'bold'
+          },
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 15,
+            fillColor: '#007bff',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2
+          },
+          title: `Stop ${stop.stop_order}: ${stop.location_name}`
         });
         
         const infoWindow = new window.google.maps.InfoWindow({
           content: `
-            <div style="padding: 10px;">
-              <strong>🚏 Stop ${index + 1}</strong><br/>
-              📍 ${stop.location_name || 'Destination'}<br/>
-              ${stop.passenger_name ? `👤 ${stop.passenger_name}` : ''}
+            <div style="padding: 8px; text-align: center;">
+              <strong style="color: #007bff;">📍 ${stop.location_name}</strong>
+              <div style="margin-top: 5px; font-size: 0.9em; color: #666;">👤 ${stop.passenger_name}</div>
             </div>
           `
         });
@@ -569,6 +802,8 @@ export default function DriverDashboard() {
         window.stopMarkers.push(marker);
       }
     });
+    
+    console.log(`✅ Added ${stops.length} destination markers:`, stops.map(s => `${s.stop_order}: ${s.location_name}`));
   };
 
   const updateDriverStatus = async (displayStatus) => {
@@ -665,76 +900,115 @@ export default function DriverDashboard() {
         
         {/* GPS Loading Overlay - only show when getting GPS */}
         {gpsLoading && (
-          <div className="gps-loading-overlay" style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            background: 'rgba(0,0,0,0.8)',
-            color: 'white',
-            padding: '10px 15px',
-            borderRadius: '8px',
-            fontSize: '0.9em',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            <div className="spinner" style={{
-              width: '16px',
-              height: '16px',
-              border: '2px solid #ffffff40',
-              borderTop: '2px solid #ffffff',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }}></div>
-            <span>📍 Getting GPS...</span>
-            
-            {/* Skip button */}
-            {showSkipButton && (
-              <button 
-                onClick={skipLocationAndContinue}
-                style={{
-                  marginLeft: '8px',
-                  padding: '4px 8px',
-                  background: '#28a745',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '0.8em'
-                }}
-              >
-                Skip
-              </button>
-            )}
-            
-            {locationError && (
-              <div style={{marginLeft: '8px'}}>
-                <span style={{color: '#ff6b6b', fontSize: '0.8em'}}>⚠️ {locationError}</span>
-                <button 
-                  onClick={() => {
-                    setLocationError(null);
-                    setGpsLoading(true);
-                    if (map && window.google && window.google.maps) {
-                      initializeTracking(map, window.google.maps);
-                    }
-                  }}
-                  style={{
-                    marginLeft: '6px',
-                    padding: '2px 6px',
-                    background: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontSize: '0.7em'
-                  }}
-                >
-                  🔄
-                </button>
+          <>
+            <style>
+              {`
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+                @keyframes pulse {
+                  0%, 100% { opacity: 0.8; }
+                  50% { opacity: 1; }
+                }
+              `}
+            </style>
+            <div className="gps-loading-overlay" style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'rgba(0,0,0,0.85)',
+              color: 'white',
+              padding: '12px 16px',
+              borderRadius: '10px',
+              fontSize: '0.9em',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+              minWidth: '200px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="spinner" style={{
+                  width: '18px',
+                  height: '18px',
+                  border: '2px solid #ffffff40',
+                  borderTop: '2px solid #ffffff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                <span style={{ animation: 'pulse 2s ease-in-out infinite' }}>📍 Getting GPS location...</span>
               </div>
-            )}
-          </div>
+              
+              {!locationError && (
+                <div style={{ fontSize: '0.75em', color: '#ccc', textAlign: 'center' }}>
+                  This may take a moment if you're indoors
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                {/* Skip button */}
+                {showSkipButton && (
+                  <button 
+                    onClick={skipLocationAndContinue}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.8em',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    Skip GPS
+                  </button>
+                )}
+                
+                {locationError && (
+                  <button 
+                    onClick={() => {
+                      setLocationError(null);
+                      setShowSkipButton(false);
+                      setGpsLoading(true);
+                      if (map && window.google && window.google.maps) {
+                        initializeTracking(map, window.google.maps);
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.8em'
+                    }}
+                  >
+                    🔄 Retry
+                  </button>
+                )}
+              </div>
+              
+              {locationError && (
+                <div style={{ 
+                  fontSize: '0.75em', 
+                  color: '#ff6b6b', 
+                  textAlign: 'center', 
+                  marginTop: '4px',
+                  padding: '4px',
+                  background: 'rgba(255, 107, 107, 0.1)',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(255, 107, 107, 0.3)'
+                }}>
+                  ⚠️ {locationError}
+                </div>
+              )}
+            </div>
+          </>
         )}
         
         {/* Navigation Status */}
