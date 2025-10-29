@@ -209,20 +209,17 @@ router.get('/my-bookings/:passenger_id', async (req, res) => {
     try {
         const query = `
             SELECT 
-                sch.*,
+                pr.*,
                 pl.name as pickup_name, pl.latitude as pickup_lat, pl.longitude as pickup_lng,
-                d.name as dest_name, d.latitude as dest_lat, d.longitude as dest_lng,
-                b.registration_number, b.capacity,
-                s.service_name
-            FROM schedules sch
-            JOIN pickup_locations pl ON sch.pickup_location_id = pl.pickup_location_id
-            JOIN destinations d ON sch.destination_id = d.destination_id
-            JOIN services ser ON sch.service_id = ser.service_id
-            JOIN buses b ON ser.bus_id = b.bus_id
-            JOIN schedules s ON sch.service_id = s.service_id
-            WHERE sch.passenger_id = ? 
-                AND sch.status = 'confirmed'
-                AND sch.pickup_time >= NOW()
+                ol.name as dest_name, ol.latitude as dest_lat, ol.longitude as dest_lng,
+                b.plate_number, b.capacity,
+                'Bus Service' as service_name
+            FROM passenger_requests pr
+            JOIN pickup_location pl ON pr.pickup_id = pl.pickup_id
+            JOIN organization_locations ol ON pr.location_id = ol.location_id
+            JOIN bus b ON pr.bus_id = b.bus_id
+            WHERE pr.user_id = ? 
+                AND pr.request_status = true
             ORDER BY sch.pickup_time
         `;
 
@@ -334,11 +331,14 @@ router.get('/system-info', (req, res) => {
                 traffic_awareness: true,
                 route_optimization: true,
                 threshold_checking: true,
-                real_time_analysis: true
+                real_time_analysis: true,
+                schedule_status_management: true
             }
         }
     });
 });
+
+
 
 /**
  * Helper function to suggest alternative times/locations
@@ -353,9 +353,9 @@ async function suggestAlternatives(pool, pickup_location_id, requested_time) {
             const altTime = new Date(baseTime.getTime() + offset * 60000);
             const [buses] = await pool.execute(`
                 SELECT COUNT(*) as available_buses
-                FROM buses b
-                JOIN services s ON b.bus_id = s.bus_id
-                WHERE s.pickup_location_id = ? AND s.status = 'active'
+                FROM bus b
+                JOIN bus_services bs ON b.bus_id = bs.bus_id
+                WHERE bs.pickup_id = ? AND b.status = 'active'
             `, [pickup_location_id]);
             
             if (buses[0].available_buses > 0) {
@@ -393,7 +393,7 @@ async function findOptimalSchedule(pool, pickup_id, location_id, passenger_count
         console.log(`\n=== FINDING OPTIMAL SCHEDULE ===`);
         console.log(`Pickup ID: ${pickup_id}, Destination ID: ${location_id}, Passengers: ${passenger_count}`);
         
-        // Find all active buses that service the same pickup location
+        // Find all active buses that service the same pickup location with onboarding schedules
         const [candidateBuses] = await pool.query(
             `SELECT DISTINCT 
              b.bus_id,
@@ -406,28 +406,80 @@ async function findOptimalSchedule(pool, pickup_id, location_id, passenger_count
              bs.service_date,
              bs.isAmShift,
              bs.isPmShift,
+             bs.pickup_id,
              pl.name as pickup_name,
              pl.latitude as pickup_lat,
-             pl.longitude as pickup_lng
+             pl.longitude as pickup_lng,
+             s.departure_time,
+             s.arrival_time,
+             s.status as schedule_status
            FROM bus b
            INNER JOIN bus_services bs ON b.bus_id = bs.bus_id
            INNER JOIN pickup_location pl ON bs.pickup_id = pl.pickup_id
            LEFT JOIN users u ON b.driver_id = u.user_id
+           INNER JOIN schedule s ON bs.service_id = s.service_id
            WHERE bs.pickup_id = ? 
              AND b.status = 'active'
              AND bs.service_date >= CURDATE()
-           ORDER BY bs.service_date ASC, b.bus_id ASC`,
+             AND s.status = 'onboarding'
+           ORDER BY bs.service_date ASC, s.departure_time ASC, b.bus_id ASC`,
             [pickup_id]
         );
 
         console.log(`Found ${candidateBuses.length} candidate buses`);
         
         if (candidateBuses.length === 0) {
+            console.log('❌ No buses found. Possible reasons:');
+            console.log('   - No buses servicing this pickup location');
+            console.log('   - All bus departure times are too soon (< 5 minutes)');
+            console.log('   - All buses are inactive');
+            console.log('   - Service date is in the past');
             return {
                 success: false,
-                reason: "No active buses found servicing this pickup location"
+                reason: "No active buses found servicing this pickup location with adequate departure time"
             };
         }
+
+        // Calculate departure times and filter by timing
+        const validBuses = [];
+        const currentTime = new Date();
+        const minimumBufferMinutes = -10; // Allow booking up to 10 minutes after departure for testing
+        
+        candidateBuses.forEach((bus, idx) => {
+            let departureTime = null;
+            
+            // If schedule exists, use schedule departure time
+            if (bus.departure_time) {
+                departureTime = new Date(bus.departure_time);
+            } else {
+                // Use the actual service_date which contains the full datetime
+                departureTime = new Date(bus.service_date);
+                console.log(`   Using service_date as departure time: ${bus.service_date} -> ${departureTime.toLocaleString()}`);
+            }
+            
+            const timeDiff = Math.round((departureTime - currentTime) / (1000 * 60));
+            const isValid = timeDiff >= minimumBufferMinutes;
+            
+            console.log(`Bus ${idx + 1}: ${bus.plate_number} - Departure: ${departureTime.toLocaleString()} (${timeDiff} min from now) - ${isValid ? '✅ VALID' : timeDiff < 0 ? '⏰ PAST DEPARTURE' : '❌ TOO SOON'}`);
+            
+            if (isValid) {
+                // Add calculated departure time to bus object
+                bus.calculated_departure_time = departureTime;
+                validBuses.push(bus);
+            }
+        });
+        
+        if (validBuses.length === 0) {
+            console.log('❌ No buses with adequate departure time found');
+            console.log(`   Required buffer: ${minimumBufferMinutes >= 0 ? minimumBufferMinutes + ' minutes before departure' : 'Allow up to ' + Math.abs(minimumBufferMinutes) + ' minutes after departure'}`);
+            console.log(`   Current time: ${currentTime.toLocaleString()}`);
+            return {
+                success: false,
+                reason: `No buses available with minimum ${minimumBufferMinutes}-minute departure buffer`
+            };
+        }
+        
+        console.log(`✅ ${validBuses.length} valid buses found after timing filter`);
 
         // Get the new destination details
         const [destinationRows] = await pool.query(
@@ -446,10 +498,10 @@ async function findOptimalSchedule(pool, pickup_id, location_id, passenger_count
 
         const newDestination = destinationRows[0];
 
-        // Evaluate each candidate bus service
-        for (let i = 0; i < candidateBuses.length; i++) {
-            const busService = candidateBuses[i];
-            console.log(`\n--- Evaluating Bus Service ${i + 1}/${candidateBuses.length} ---`);
+        // Evaluate each valid bus service
+        for (let i = 0; i < validBuses.length; i++) {
+            const busService = validBuses[i];
+            console.log(`\n--- Evaluating Bus Service ${i + 1}/${validBuses.length} ---`);
             
             const evaluationResult = await evaluateBusServiceForNewPassenger(
                 pool,
@@ -458,9 +510,13 @@ async function findOptimalSchedule(pool, pickup_id, location_id, passenger_count
                 passenger_count
             );
 
+            console.log(`   Evaluation result: ${evaluationResult.suitable ? 'SUITABLE' : 'NOT SUITABLE'}`);
+            console.log(`   Reason: ${evaluationResult.reason}`);
+
             if (evaluationResult.suitable) {
-                // Get or create schedule for this service
+                // Get or create schedule for this service (will avoid reusing active schedules)
                 const schedule_id = await getOrCreateScheduleForService(pool, busService.service_id);
+                console.log(`   📅 Using schedule ${schedule_id} for service ${busService.service_id}`);
                 
                 return {
                     success: true,
@@ -496,6 +552,10 @@ async function findOptimalSchedule(pool, pickup_id, location_id, passenger_count
  */
 async function evaluateBusServiceForNewPassenger(pool, busService, newDestination, passengerCount) {
     try {
+        console.log(`   🔍 Evaluating Bus ${busService.plate_number} (ID: ${busService.bus_id})`);
+        console.log(`   📍 Destination: ${newDestination.name} (ID: ${newDestination.location_id})`);
+        console.log(`   👥 Passenger count: ${passengerCount}`);
+        
         // Check bus capacity first
         const [currentPassengers] = await pool.query(
             `SELECT SUM(CAST(pr.passenger_count AS UNSIGNED)) as total_passengers
@@ -509,6 +569,8 @@ async function evaluateBusServiceForNewPassenger(pool, busService, newDestinatio
         const totalPassengers = currentPassengerCount + newPassengerCount;
         const effectiveCapacity = Math.floor(busService.capacity * 0.85); // 85% capacity
         
+        console.log(`   🚌 Capacity check: ${currentPassengerCount} current + ${newPassengerCount} new = ${totalPassengers}/${effectiveCapacity} effective capacity`);
+        
         if (totalPassengers > effectiveCapacity) {
             return {
                 suitable: false,
@@ -517,20 +579,20 @@ async function evaluateBusServiceForNewPassenger(pool, busService, newDestinatio
         }
 
         // Get pickup location for the new passenger
-        const [pickupLocations] = await pool.query(
-            `SELECT pickup_id, name, latitude, longitude 
-             FROM pickup_location 
-             WHERE pickup_id = ?`,
-            [busService.pickup_location_id]
-        );
+        // Get pickup location - we already have the pickup info from the main query
+        // But let's get the full details if needed
+        console.log(`   🔍 Using pickup_id from bus service: ${busService.pickup_id}`);
         
-        const pickupLocation = pickupLocations[0];
-        if (!pickupLocation) {
-            return {
-                suitable: false,
-                reason: "Pickup location not found"
-            };
-        }
+        const pickupLocation = {
+            pickup_id: busService.pickup_id,
+            name: busService.pickup_name,
+            latitude: busService.pickup_lat,
+            longitude: busService.pickup_lng
+        };
+        
+        console.log(`   ✅ Pickup location: ${pickupLocation.name}`);
+        
+
 
         // Get existing destinations for this bus service
         const [existingDestinations] = await pool.query(
@@ -726,14 +788,14 @@ async function updateRouteOrder(pool, schedule_id, newRouteOrder) {
             let stopName = '';
             
             if (stop.type === 'pickup') {
-                // For pickup stops, use pickup_id and find requests with matching pickup_location_id
+                // For pickup stops, use pickup_id and find requests with matching pickup_id
                 stopLocationId = stop.location_id;
                 stopName = stop.name;
                 
                 const [requestRows] = await pool.query(
                     `SELECT pr.request_id
                    FROM passenger_requests pr
-                   WHERE pr.pickup_location_id = ? 
+                   WHERE pr.pickup_id = ? 
                      AND pr.request_status = true
                      AND EXISTS (
                        SELECT 1 FROM bus_services bs 
@@ -815,20 +877,28 @@ async function updateRouteOrder(pool, schedule_id, newRouteOrder) {
  */
 async function getOrCreateScheduleForService(pool, service_id) {
     try {
-        // Check if schedule already exists for this service
+        // Check if there's an onboarding schedule for this service
         const [existingSchedules] = await pool.query(
-            `SELECT schedule_id FROM schedule WHERE service_id = ? LIMIT 1`,
+            `SELECT s.schedule_id, s.departure_time, s.arrival_time, s.status
+           FROM schedule s 
+           WHERE s.service_id = ? 
+             AND s.status = 'onboarding'
+           ORDER BY s.departure_time DESC 
+           LIMIT 1`,
             [service_id]
         );
 
+        // Reuse existing onboarding schedule
         if (existingSchedules.length > 0) {
-            return existingSchedules[0].schedule_id;
+            const schedule = existingSchedules[0];
+            console.log(`✅ Reusing existing onboarding schedule ${schedule.schedule_id}`);
+            return schedule.schedule_id;
         }
 
-        // Create new schedule for this service
+        // Create new schedule for this service with onboarding status
         const [scheduleResult] = await pool.query(
-            `INSERT INTO schedule (service_id, departure_time, arrival_time)
-           VALUES (?, NOW() + INTERVAL 1 HOUR, NOW() + INTERVAL 4 HOUR)`,
+            `INSERT INTO schedule (service_id, departure_time, arrival_time, status)
+           VALUES (?, NOW() + INTERVAL 1 HOUR, NOW() + INTERVAL 4 HOUR, 'onboarding')`,
             [service_id]
         );
 
