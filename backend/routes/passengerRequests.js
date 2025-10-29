@@ -84,22 +84,18 @@ router.post('/process', async (req, res) => {
             });
             
         } else {
-            console.log('❌ No optimal bus found, creating pending request...');
+            console.log('No optimal bus found');
             
-            // Create pending request
-            const [result] = await pool.query(
-                `INSERT INTO passenger_requests (
-                   user_id, pickup_id, location_id, tier_id, passenger_count, request_status
-                 ) VALUES (?, ?, ?, ?, ?, ?)`,
-                [user_id, pickup_id, location_id, 1, passenger_count || 1, false]
-            );
-
             return res.status(409).json({
                 success: false,
                 status: 'REJECTED',
                 reason: 'NO_AVAILABLE_BUS',
-                message: assignmentResult.reason,
-                request_id: result.insertId
+                message: 'No buses are currently available for your route. Please try again later or contact support for alternative arrangements.',
+                suggestions: [
+                    'Try booking at a different time',
+                    'Check if other pickup locations are available',
+                    'Contact customer service for assistance'
+                ]
             });
         }
 
@@ -520,6 +516,22 @@ async function evaluateBusServiceForNewPassenger(pool, busService, newDestinatio
             };
         }
 
+        // Get pickup location for the new passenger
+        const [pickupLocations] = await pool.query(
+            `SELECT pickup_id, name, latitude, longitude 
+             FROM pickup_location 
+             WHERE pickup_id = ?`,
+            [busService.pickup_location_id]
+        );
+        
+        const pickupLocation = pickupLocations[0];
+        if (!pickupLocation) {
+            return {
+                suitable: false,
+                reason: "Pickup location not found"
+            };
+        }
+
         // Get existing destinations for this bus service
         const [existingDestinations] = await pool.query(
             `SELECT DISTINCT 
@@ -538,30 +550,56 @@ async function evaluateBusServiceForNewPassenger(pool, busService, newDestinatio
         const destinationExists = existingDestinations.some(dest => dest.location_id === newDestination.location_id);
         if (destinationExists) {
             console.log(`Destination already exists in route`);
+            
+            // Create route: pickup → existing destinations (including the one passenger wants)
+            const routeOrder = [
+                {
+                    type: 'pickup',
+                    location_id: pickupLocation.pickup_id,
+                    name: pickupLocation.name,
+                    latitude: pickupLocation.latitude,
+                    longitude: pickupLocation.longitude,
+                    stop_order: 1
+                },
+                ...existingDestinations.map((dest, idx) => ({
+                    type: 'destination',
+                    location_id: dest.location_id,
+                    name: dest.name,
+                    latitude: dest.latitude,
+                    longitude: dest.longitude,
+                    stop_order: idx + 2
+                }))
+            ];
+            
             return {
                 suitable: true,
                 reason: "Destination already exists in route",
-                newRouteOrder: existingDestinations.map((dest, idx) => ({
-                    location: {
-                        location_id: dest.location_id,
-                        name: dest.name
-                    },
-                    distance: idx * 1000 // Simple mock
-                }))
+                newRouteOrder: routeOrder
             };
         }
 
-        // ADD TRAFFIC ANALYSIS to route evaluation
+        // Add new destination to route
         const allDestinations = [...existingDestinations, newDestination];
         
-        // Create mock route order
-        const newRouteOrder = allDestinations.map((dest, idx) => ({
-            location: {
-                location_id: dest.location_id,
-                name: dest.name
+        // Create complete route: pickup → all destinations (optimized)
+        const newRouteOrder = [
+            {
+                type: 'pickup',
+                location_id: pickupLocation.pickup_id,
+                name: pickupLocation.name,
+                latitude: pickupLocation.latitude,
+                longitude: pickupLocation.longitude,
+                stop_order: 1
             },
-            distance: idx * 1000 // Simple distance calculation
-        }));
+            ...allDestinations.map((dest, idx) => ({
+                type: 'destination',
+                location_id: dest.location_id,
+                name: dest.name,
+                latitude: dest.latitude,
+                longitude: dest.longitude,
+                stop_order: idx + 2
+            }))
+        ];
 
         // ✅ TRAFFIC ANALYSIS INTEGRATION
         let trafficAnalysis = null;
@@ -682,26 +720,59 @@ async function updateRouteOrder(pool, schedule_id, newRouteOrder) {
             // Add 10 minutes per stop
             currentTime.setMinutes(currentTime.getMinutes() + (i > 0 ? 10 : 0));
             
-            // Find corresponding request for this location
-            const [requestRows] = await pool.query(
-                `SELECT pr.request_id
-               FROM passenger_requests pr
-               WHERE pr.location_id = ? 
-                 AND pr.request_status = true
-                 AND EXISTS (
-                   SELECT 1 FROM bus_services bs 
-                   INNER JOIN schedule s ON bs.service_id = s.service_id
-                   WHERE s.schedule_id = ?
-                   AND pr.bus_id = bs.bus_id
-                 )
-               ORDER BY pr.request_id DESC
-               LIMIT 1`,
-                [stop.location.location_id, schedule_id]
-            );
-
+            // Handle different stop types (pickup vs destination)
             let request_id = null;
-            if (requestRows.length > 0) {
-                request_id = requestRows[0].request_id;
+            let stopLocationId = null;
+            let stopName = '';
+            
+            if (stop.type === 'pickup') {
+                // For pickup stops, use pickup_id and find requests with matching pickup_location_id
+                stopLocationId = stop.location_id;
+                stopName = stop.name;
+                
+                const [requestRows] = await pool.query(
+                    `SELECT pr.request_id
+                   FROM passenger_requests pr
+                   WHERE pr.pickup_location_id = ? 
+                     AND pr.request_status = true
+                     AND EXISTS (
+                       SELECT 1 FROM bus_services bs 
+                       INNER JOIN schedule s ON bs.service_id = s.service_id
+                       WHERE s.schedule_id = ?
+                       AND pr.bus_id = bs.bus_id
+                     )
+                   ORDER BY pr.request_id DESC
+                   LIMIT 1`,
+                    [stopLocationId, schedule_id]
+                );
+                
+                if (requestRows.length > 0) {
+                    request_id = requestRows[0].request_id;
+                }
+            } else if (stop.type === 'destination') {
+                // For destination stops, use location_id as before
+                stopLocationId = stop.location_id;
+                stopName = stop.name;
+                
+                const [requestRows] = await pool.query(
+                    `SELECT pr.request_id
+                   FROM passenger_requests pr
+                   WHERE pr.location_id = ? 
+                     AND pr.request_status = true
+                     AND EXISTS (
+                       SELECT 1 FROM bus_services bs 
+                       INNER JOIN schedule s ON bs.service_id = s.service_id
+                       WHERE s.schedule_id = ?
+                       AND pr.bus_id = bs.bus_id
+                     )
+                   ORDER BY pr.request_id DESC
+                   LIMIT 1`,
+                    [stopLocationId, schedule_id]
+                );
+                
+                if (requestRows.length > 0) {
+                    request_id = requestRows[0].request_id;
+                }
             }
 
             // FIXED: Handle timezone properly for MySQL TIMESTAMP
@@ -727,7 +798,7 @@ async function updateRouteOrder(pool, schedule_id, newRouteOrder) {
                 ]
             );
 
-            console.log(`Created route stop ${i + 1}: ${stop.location.name} - ETA: ${currentTime.toLocaleTimeString()} (DB: ${mysqlTimestamp})`);
+            console.log(`Created route stop ${i + 1}: ${stopName} (${stop.type}) - ETA: ${currentTime.toLocaleTimeString()} (DB: ${mysqlTimestamp})`);
         }
 
         console.log(`Successfully updated route order for schedule ${schedule_id}`);

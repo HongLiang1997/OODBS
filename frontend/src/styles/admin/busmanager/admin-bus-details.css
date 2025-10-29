@@ -77,6 +77,7 @@
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  table-layout: auto; /* Allow flexible column widths */
 }
 
 .bus-shift-table {
@@ -112,6 +113,49 @@
   text-transform: uppercase;
   letter-spacing: 0.025em;
   padding: 0.75rem 1.25rem;
+}
+
+/* Flexible table cell styles */
+.bus-shift-table th,
+.bus-shift-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Services table specific styling */
+.bus-shift-table.services-table th:nth-child(1),
+.bus-shift-table.services-table td:nth-child(1) {
+  min-width: 150px; /* Pick Up Location */
+}
+.bus-shift-table.services-table th:nth-child(2),
+.bus-shift-table.services-table td:nth-child(2) {
+  min-width: 120px; /* Date */
+}
+.bus-shift-table.services-table th:nth-child(3),
+.bus-shift-table.services-table td:nth-child(3) {
+  min-width: 80px; /* Shifts */
+  text-align: center;
+}
+
+/* Schedule table specific styling */
+.bus-shift-table.schedule-table th:nth-child(1),
+.bus-shift-table.schedule-table td:nth-child(1) {
+  min-width: 120px; /* Pickup Location */
+}
+.bus-shift-table.schedule-table th:nth-child(2),
+.bus-shift-table.schedule-table td:nth-child(2) {
+  min-width: 100px; /* Departure */
+}
+.bus-shift-table.schedule-table th:nth-child(3),
+.bus-shift-table.schedule-table td:nth-child(3) {
+  min-width: 100px; /* Arrival */
+}
+.bus-shift-table.schedule-table th:nth-child(4),
+.bus-shift-table.schedule-table td:nth-child(4) {
+  min-width: 80px; /* Shifts */
+  text-align: center;
 }
 
 .bus-shift-table td {
@@ -354,4 +398,273 @@
   font-family: monospace;
   color: #059669;
   font-weight: 500;
+}
+
+/* ===== COMPLETELY NEW SIMPLE TABLE STYLING ===== */
+
+.simple-table-wrapper {
+  margin-top: 1rem;
+  overflow: hidden;
+  width: 100%;
+}
+
+.simple-table {
+  width: 100%;
+  max-width: 100%;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 0; /* Allow shrinking */
+}
+
+/* Services table (3 columns) */
+.services-list .table-header,
+.services-list .table-row {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1fr;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Schedule table (4 columns) */
+.schedule-list .table-header,
+.schedule-list .table-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 0.8fr;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Header styling */
+.table-header {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.schedule-list .table-header {
+  background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+}
+
+.header-cell {
+  padding: 0.6rem 0.5rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  line-height: 1.2;
+}
+
+.header-cell:last-child {
+  border-right: none;
+}
+
+.header-cell.shifts {
+  text-align: center;
+}
+
+/* Body styling */
+.table-body {
+  background: white;
+}
+
+.table-row {
+  border-bottom: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.table-row:hover {
+  background: #f8fafc;
+}
+
+.table-row.clickable {
+  cursor: pointer;
+}
+
+.table-row.clickable:hover {
+  background: #fef3c7;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-cell {
+  padding: 0.75rem 0.5rem;
+  color: #374151;
+  font-size: 0.85rem;
+  border-right: 1px solid #f3f4f6;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  line-height: 1.3;
+}
+
+.table-cell:last-child {
+  border-right: none;
+}
+
+.table-cell.location {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: clamp(0.7rem, 2vw, 0.85rem);
+}
+
+.table-cell.date,
+.table-cell.departure,
+.table-cell.arrival {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #6b7280;
+  font-size: clamp(0.65rem, 1.8vw, 0.8rem);
+}
+
+.table-cell.shifts {
+  text-align: center;
+}
+
+/* Shift badges */
+.new-shift-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0.125rem;
+}
+
+.new-shift-badge.am {
+  background: #fbbf24;
+  color: #92400e;
+}
+
+.new-shift-badge.pm {
+  background: #a78bfa;
+  color: #5b21b6;
+}
+
+.no-shifts {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+/* No data message */
+.no-data-message {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+  font-style: italic;
+  background: #f9fafb;
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+
+/* Responsive design with adaptive text scaling */
+@media (max-width: 768px) {
+  .services-list .table-header,
+  .services-list .table-row {
+    grid-template-columns: 1.8fr 1.2fr 0.8fr;
+  }
+  
+  .schedule-list .table-header,
+  .schedule-list .table-row {
+    grid-template-columns: 1.4fr 0.9fr 0.9fr 0.6fr;
+  }
+  
+  .header-cell,
+  .table-cell {
+    padding: 0.6rem 0.3rem;
+    font-size: clamp(0.6rem, 1.5vw, 0.75rem);
+  }
+  
+  .table-cell.location {
+    font-size: clamp(0.6rem, 1.8vw, 0.75rem);
+  }
+  
+  .table-cell.date,
+  .table-cell.departure,
+  .table-cell.arrival {
+    font-size: clamp(0.55rem, 1.3vw, 0.7rem);
+  }
+}
+
+@media (max-width: 576px) {
+  .services-list .table-header,
+  .services-list .table-row {
+    grid-template-columns: 2fr 1fr 0.8fr;
+  }
+  
+  .schedule-list .table-header,
+  .schedule-list .table-row {
+    grid-template-columns: 1.2fr 0.8fr 0.8fr 0.6fr;
+  }
+  
+  .header-cell,
+  .table-cell {
+    padding: 0.4rem 0.25rem;
+    font-size: clamp(0.55rem, 1.2vw, 0.7rem);
+    line-height: 1.2;
+  }
+  
+  .table-cell.location {
+    font-size: clamp(0.55rem, 1.4vw, 0.7rem);
+  }
+  
+  .table-cell.date,
+  .table-cell.departure,
+  .table-cell.arrival {
+    font-size: clamp(0.5rem, 1.1vw, 0.65rem);
+  }
+  
+  .new-shift-badge {
+    font-size: clamp(0.5rem, 1vw, 0.6rem);
+    padding: 0.15rem 0.3rem;
+  }
+}
+
+/* Ultra small screens */
+@media (max-width: 400px) {
+  .header-cell,
+  .table-cell {
+    padding: 0.3rem 0.2rem;
+    font-size: 0.6rem;
+    line-height: 1.1;
+  }
+  
+  .table-cell.location {
+    font-size: 0.65rem;
+  }
+  
+  .table-cell.date,
+  .table-cell.departure,
+  .table-cell.arrival {
+    font-size: 0.55rem;
+  }
+  
+  .new-shift-badge {
+    font-size: 0.5rem;
+    padding: 0.1rem 0.25rem;
+  }
+}
+
+/* Ensure cards don't overflow */
+.dashboard-card {
+  overflow: hidden;
+}
+
+.dashboard-card .simple-table-wrapper {
+  overflow: hidden;
+  max-width: 100%;
 }

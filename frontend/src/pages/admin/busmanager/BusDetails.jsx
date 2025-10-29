@@ -177,63 +177,60 @@ export default function BusDetailPage() {
                   Past
                 </button>
               </div>
-              <div>
-                <table className="bus-shift-table">
-                  <thead>
-                    <tr>
-                      <th>Pick Up Location</th>
-                      <th>Date</th>
-                      <th>Shifts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const filteredServices = getFilteredServices();
-                      return filteredServices.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="empty-state">
-                            {showUpcoming 
-                              ? "No upcoming services found." 
-                              : "No past services found."
-                            }
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredServices
+              <div className="simple-table-wrapper">
+                {(() => {
+                  const filteredServices = getFilteredServices();
+                  return filteredServices.length === 0 ? (
+                    <div className="no-data-message">
+                      {showUpcoming 
+                        ? "No upcoming services found." 
+                        : "No past services found."
+                      }
+                    </div>
+                  ) : (
+                    <div className="simple-table services-list">
+                      <div className="table-header">
+                        <div className="header-cell location">Pick Up Location</div>
+                        <div className="header-cell date">Date</div>
+                        <div className="header-cell shifts">Shifts</div>
+                      </div>
+                      <div className="table-body">
+                        {filteredServices
                           .sort((a, b) => {
                             const dateA = new Date(a.service_date);
                             const dateB = new Date(b.service_date);
                             return showUpcoming ? dateA - dateB : dateB - dateA;
                           })
                           .map((svc, idx) => (
-                            <tr key={idx}>
-                              <td className="location-name">{svc.location_name}</td>
-                              <td className="service-date">
+                            <div key={idx} className="table-row">
+                              <div className="table-cell location">{svc.location_name}</div>
+                              <div className="table-cell date">
                                 {new Date(svc.service_date).toLocaleDateString('en-US', {
                                   weekday: 'short',
                                   month: 'short',
                                   day: 'numeric',
                                   year: 'numeric'
                                 })}
-                              </td>
-                              <td>
+                              </div>
+                              <div className="table-cell shifts">
                                 {(svc.isAmShift === 1 || svc.isAmShift === true || svc.isamshift === 1 || svc.isamshift === true) && (
-                                  <span className="shift-badge am">AM</span>
+                                  <span className="new-shift-badge am">AM</span>
                                 )}
                                 {(svc.isPmShift === 1 || svc.isPmShift === true || svc.ispmshift === 1 || svc.ispmshift === true) && (
-                                  <span className="shift-badge pm">PM</span>
+                                  <span className="new-shift-badge pm">PM</span>
                                 )}
                                 {!(svc.isAmShift === 1 || svc.isAmShift === true || svc.isamshift === 1 || svc.isamshift === true || 
                                    svc.isPmShift === 1 || svc.isPmShift === true || svc.ispmshift === 1 || svc.ispmshift === true) && (
-                                  <span className="text-muted">No shifts</span>
+                                  <span className="no-shifts">No shifts</span>
                                 )}
-                              </td>
-                            </tr>
+                              </div>
+                            </div>
                           ))
-                      );
-                    })()}
-                  </tbody>
-                </table>
+                        }
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -264,77 +261,73 @@ export default function BusDetailPage() {
                   Past
                 </button>
               </div>
-              <div>
-                <table className="bus-shift-table">
-                  <thead>
-                    <tr>
-                      <th>Pickup Location</th>
-                      <th>Departure</th>
-                      <th>Arrival</th>
-                      <th>Shifts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const filteredSchedules = getFilteredSchedules();
-                      return filteredSchedules.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="empty-state">
-                            {showUpcomingSchedule 
-                              ? "No upcoming schedules found." 
-                              : "No past schedules found."
-                            }
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredSchedules
+              <div className="simple-table-wrapper">
+                {(() => {
+                  const filteredSchedules = getFilteredSchedules();
+                  return filteredSchedules.length === 0 ? (
+                    <div className="no-data-message">
+                      {showUpcomingSchedule 
+                        ? "No upcoming schedules found." 
+                        : "No past schedules found."
+                      }
+                    </div>
+                  ) : (
+                    <div className="simple-table schedule-list">
+                      <div className="table-header">
+                        <div className="header-cell location">Pickup Location</div>
+                        <div className="header-cell departure">Departure</div>
+                        <div className="header-cell arrival">Arrival</div>
+                        <div className="header-cell shifts">Shifts</div>
+                      </div>
+                      <div className="table-body">
+                        {filteredSchedules
                           .sort((a, b) => {
                             const dateA = new Date(a.departure_time);
                             const dateB = new Date(b.departure_time);
                             return showUpcomingSchedule ? dateA - dateB : dateB - dateA;
                           })
                           .map((schedule, idx) => (
-                            <tr 
+                            <div 
                               key={idx} 
+                              className="table-row clickable"
                               onClick={() => handleScheduleClick(schedule)}
-                              style={{ cursor: 'pointer' }}
-                              className="schedule-row"
                             >
-                              <td className="location-name">{schedule.pickup_location_name}</td>
-                              <td className="service-date">
+                              <div className="table-cell location">{schedule.pickup_location_name}</div>
+                              <div className="table-cell departure">
                                 {new Date(schedule.departure_time).toLocaleString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit'
                                 })}
-                              </td>
-                              <td className="service-date">
+                              </div>
+                              <div className="table-cell arrival">
                                 {new Date(schedule.arrival_time).toLocaleString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit'
                                 })}
-                              </td>
-                              <td>
+                              </div>
+                              <div className="table-cell shifts">
                                 {(schedule.isAmShift === 1 || schedule.isAmShift === true) && (
-                                  <span className="shift-badge am">AM</span>
+                                  <span className="new-shift-badge am">AM</span>
                                 )}
                                 {(schedule.isPmShift === 1 || schedule.isPmShift === true) && (
-                                  <span className="shift-badge pm">PM</span>
+                                  <span className="new-shift-badge pm">PM</span>
                                 )}
                                 {!(schedule.isAmShift === 1 || schedule.isAmShift === true || 
                                    schedule.isPmShift === 1 || schedule.isPmShift === true) && (
-                                  <span className="text-muted">No shifts</span>
+                                  <span className="no-shifts">No shifts</span>
                                 )}
-                              </td>
-                            </tr>
+                              </div>
+                            </div>
                           ))
-                      );
-                    })()}
-                  </tbody>
-                </table>
+                        }
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
