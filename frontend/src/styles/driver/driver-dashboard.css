@@ -44,16 +44,37 @@
   display: inline-block;
 }
 
-.status-indicator.off-duty {
+.status-indicator.inactive {
   background-color: #6c757d;
 }
 
-.status-indicator.available {
+.status-indicator.active {
+  background-color: #28a745;
+}
+
+.status-indicator.on_route {
+  background-color: #007bff;
+}
+
+.status-indicator.break {
+  background-color: #ffc107;
+}
+
+/* Support for lowercase database values */
+.status-indicator.inactive {
+  background-color: #6c757d;
+}
+
+.status-indicator.active {
   background-color: #28a745;
 }
 
 .status-indicator.on-route {
   background-color: #007bff;
+}
+
+.status-indicator.break {
+  background-color: #ffc107;
 }
 
 .status-text {
@@ -386,6 +407,48 @@
 .status-btn.active:hover {
   background: #0056b3;
   border-color: #0056b3;
+}
+
+/* Specific status button colors */
+.status-btn.status-active.active {
+  background: #28a745;
+  border-color: #28a745;
+}
+
+.status-btn.status-active.active:hover {
+  background: #218838;
+  border-color: #218838;
+}
+
+.status-btn.status-onroute.active {
+  background: #007bff;
+  border-color: #007bff;
+}
+
+.status-btn.status-onroute.active:hover {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+
+.status-btn.status-break.active {
+  background: #ffc107;
+  border-color: #ffc107;
+  color: #212529;
+}
+
+.status-btn.status-break.active:hover {
+  background: #e0a800;
+  border-color: #e0a800;
+}
+
+.status-btn.status-inactive.active {
+  background: #6c757d;
+  border-color: #6c757d;
+}
+
+.status-btn.status-inactive.active:hover {
+  background: #5a6268;
+  border-color: #5a6268;
 }
 
 .nav-tabs {

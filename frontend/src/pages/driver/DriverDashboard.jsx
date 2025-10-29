@@ -7,8 +7,25 @@ const GOOGLE_MAPS_API_KEY = 'AIzaSyA8-KzovI2Gee5QfsCN1QrCrgvo9ai092s';
 
 export default function DriverDashboard() {
   const driver = JSON.parse(localStorage.getItem("driver"));
+  
+  // Status mapping: database value → display name
+  const statusMapping = {
+    'active': 'Active',
+    'inactive': 'Inactive', 
+    'on-route': 'On-Route',
+    'break': 'Break'
+  };
+  
+  // Reverse mapping: display name → database value
+  const reverseStatusMapping = {
+    'Active': 'active',
+    'Inactive': 'inactive',
+    'On-Route': 'on-route', 
+    'Break': 'break'
+  };
+  
   const [bottomNavOpen, setBottomNavOpen] = useState(false);
-  const [driverStatus, setDriverStatus] = useState('off-duty');
+  const [driverStatus, setDriverStatus] = useState('inactive');
   const [currentLocation, setCurrentLocation] = useState([1.3521, 103.8198]); // Singapore default
   const [gpsLoading, setGpsLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
@@ -120,6 +137,7 @@ export default function DriverDashboard() {
   useEffect(() => {
     if (driver?.user_id && map) {
       fetchDriverSchedules();
+      fetchDriverStatus();
     }
   }, [map]);
 
@@ -320,6 +338,25 @@ export default function DriverDashboard() {
       }
     } catch (error) {
       console.error('Error fetching schedules:', error);
+    }
+  };
+
+  const fetchDriverStatus = async () => {
+    try {
+      console.log('Fetching driver status for user_id:', driver.user_id);
+      const response = await fetch(`http://localhost:5000/driver/info/${driver.user_id}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Driver status response:', data);
+        if (data.bus && data.bus.status) {
+          console.log('Setting driver status to database value:', data.bus.status, 'which displays as:', statusMapping[data.bus.status]);
+          setDriverStatus(data.bus.status); // Store database value (single letter)
+        }
+      } else {
+        console.error('Failed to fetch driver status:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching driver status:', error);
     }
   };
 
@@ -534,18 +571,25 @@ export default function DriverDashboard() {
     });
   };
 
-  const updateDriverStatus = async (status) => {
+  const updateDriverStatus = async (displayStatus) => {
     try {
+      const dbStatus = reverseStatusMapping[displayStatus];
+      console.log('Updating driver status from display:', displayStatus, 'to database:', dbStatus, 'for user_id:', driver.user_id);
+      
       const response = await fetch(`http://localhost:5000/driver/status/${driver.user_id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status: dbStatus }),
       });
       
       if (response.ok) {
-        setDriverStatus(status);
+        const result = await response.json();
+        console.log('Status update result:', result);
+        setDriverStatus(dbStatus); // Store database value in state
+      } else {
+        console.error('Failed to update status:', response.status);
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -586,7 +630,7 @@ export default function DriverDashboard() {
           <h2>Welcome, {driver?.full_name || 'Driver'}</h2>
           <div className="status-display">
             <span className={`status-indicator ${driverStatus}`}></span>
-            <span className="status-text">{driverStatus.replace('-', ' ').toUpperCase()}</span>
+            <span className="status-text">{statusMapping[driverStatus]?.toUpperCase() || 'INACTIVE'}</span>
             {locationError && (
               <button 
                 className="refresh-location-btn" 
@@ -749,22 +793,28 @@ export default function DriverDashboard() {
             <h3><FaMapMarkedAlt /> Driver Status</h3>
             <div className="status-controls">
               <button 
-                className={`status-btn ${driverStatus === 'available' ? 'active' : ''}`}
-                onClick={() => updateDriverStatus('available')}
+                className={`status-btn status-active ${driverStatus === 'active' ? 'active' : ''}`}
+                onClick={() => updateDriverStatus('Active')}
               >
-                <FaPlay /> Available
+                <FaPlay /> Active
               </button>
               <button 
-                className={`status-btn ${driverStatus === 'on-route' ? 'active' : ''}`}
-                onClick={() => updateDriverStatus('on-route')}
+                className={`status-btn status-onroute ${driverStatus === 'on-route' ? 'active' : ''}`}
+                onClick={() => updateDriverStatus('On-Route')}
               >
                 <FaClock /> On Route
               </button>
               <button 
-                className={`status-btn ${driverStatus === 'off-duty' ? 'active' : ''}`}
-                onClick={() => updateDriverStatus('off-duty')}
+                className={`status-btn status-break ${driverStatus === 'break' ? 'active' : ''}`}
+                onClick={() => updateDriverStatus('Break')}
               >
-                <FaStop /> Off Duty
+                <FaPause /> Break
+              </button>
+              <button 
+                className={`status-btn status-inactive ${driverStatus === 'inactive' ? 'active' : ''}`}
+                onClick={() => updateDriverStatus('Inactive')}
+              >
+                <FaStop /> Inactive
               </button>
             </div>
           </div>

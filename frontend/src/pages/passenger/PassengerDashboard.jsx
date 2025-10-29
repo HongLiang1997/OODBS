@@ -108,19 +108,25 @@ export default function PassengerDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/passenger/requests', {
+      const response = await fetch('http://localhost:5000/api/passenger-requests/process', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...bookingForm,
-          user_id: passenger.user_id
+          passenger_id: passenger.user_id,
+          pickup_location_id: bookingForm.pickup_id,
+          destination_id: bookingForm.location_id,
+          passenger_count: parseInt(bookingForm.passenger_count),
+          requested_pickup_time: new Date().toISOString() // Use current time as requested time
         })
       });
 
-      if (response.ok) {
-        alert('Booking request submitted successfully! Our system will find the best bus and route for you.');
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('🎉 Booking confirmed! ' + result.message + 
+              (result.bus_assignment ? `\nBus: ${result.bus_assignment.plate_number}` : ''));
         setBookingForm({
           pickup_id: '',
           location_id: '',
@@ -128,8 +134,9 @@ export default function PassengerDashboard() {
         });
         fetchPastRequests(passenger.user_id);
       } else {
-        const error = await response.json();
-        alert('Error: ' + error.error);
+        alert('ℹ️ ' + result.message + 
+              (result.reason === 'THRESHOLD_EXCEEDED' ? '\n\n⚠️ Traffic analysis shows this route would cause significant delays for other passengers.' :
+               result.reason === 'NO_AVAILABLE_BUS' ? '\n\nYour request has been added to the queue for admin review.' : ''));
       }
     } catch (error) {
       console.error('Error submitting booking:', error);

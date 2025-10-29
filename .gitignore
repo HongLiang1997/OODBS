@@ -72,6 +72,6 @@ temp/
 backend/traffic/*.csv
 *.csv
 
-# Generated visualization files
-backend/scripts/traffic_threshold_visualization.html
-backend/scripts/traffic_output.txt
+# Generated visualization files  
+docs/visualizations/traffic_threshold_visualization.html
+docs/visualizations/traffic_output.txt

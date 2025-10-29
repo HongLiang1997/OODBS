@@ -56,7 +56,29 @@ app.use('/routing', routingRouter);
 const driverRouter = require('./routes/driver');
 app.use('/driver', driverRouter);
 
+// Traffic Awareness Module
+const trafficRouter = require('./routes/traffic');
+app.use('/api/traffic', trafficRouter);
+
+// Enhanced Passenger Request Processing (with traffic awareness)
+const passengerRequestsRouter = require('./routes/passengerRequests');
+app.use('/api/passenger-requests', passengerRequestsRouter);
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+
+// Initialize Traffic Awareness Service on startup
+const { trafficAwarenessService } = require('./services/trafficAwarenessService');
+
+app.listen(PORT, async () => {
   console.log(`Backend running on port ${PORT}`);
+  
+  // Initialize Traffic Awareness Service
+  try {
+    console.log('Initializing Traffic Awareness Service...');
+    await trafficAwarenessService.initialize();
+    console.log('Traffic Awareness Service ready');
+  } catch (error) {
+    console.error('Failed to initialize Traffic Awareness Service:', error.message);
+    console.error('Traffic features will be unavailable');
+  }
 });

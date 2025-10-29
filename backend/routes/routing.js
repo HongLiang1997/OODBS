@@ -228,4 +228,117 @@ router.post("/process-requests", async (req, res) => {
   }
 });
 
+// GET /routing/schedule/:schedule_id - Get route with stop orders and ETAs for a schedule
+router.get("/schedule/:schedule_id", async (req, res) => {
+  try {
+    const { schedule_id } = req.params;
+
+    // Get route information with stop orders and ETAs
+    const [routes] = await pool.query(`
+      SELECT 
+        r.route_id,
+        r.stop_order,
+        r.eta,
+        pr.user_id,
+        pr.pickup_id,
+        pr.location_id,
+        pr.passenger_count,
+        pl.name as pickup_name,
+        pl.latitude as pickup_lat,
+        pl.longitude as pickup_lng,
+        ol.name as destination_name,
+        ol.latitude as dest_lat,
+        ol.longitude as dest_lng,
+        u.full_name as passenger_name,
+        u.phone_num as passenger_phone
+      FROM routes r
+      JOIN passenger_requests pr ON r.request_id = pr.request_id
+      LEFT JOIN pickup_location pl ON pr.pickup_id = pl.pickup_id
+      LEFT JOIN organization_locations ol ON pr.location_id = ol.location_id
+      LEFT JOIN users u ON pr.user_id = u.user_id
+      WHERE r.schedule_id = ?
+      ORDER BY r.stop_order ASC
+    `, [schedule_id]);
+
+    if (routes.length === 0) {
+      return res.status(404).json({
+        error: "No routes found for this schedule"
+      });
+    }
+
+    // Get schedule information
+    const [scheduleInfo] = await pool.query(`
+      SELECT 
+        s.schedule_id,
+        s.service_id,
+        s.departure_time,
+        s.arrival_time,
+        b.bus_id,
+        b.plate_number,
+        b.capacity,
+        u.full_name as driver_name
+      FROM schedule s
+      JOIN bus_services bs ON s.service_id = bs.service_id
+      JOIN bus b ON bs.bus_id = b.bus_id
+      LEFT JOIN users u ON b.driver_id = u.user_id
+      WHERE s.schedule_id = ?
+    `, [schedule_id]);
+
+    res.json({
+      success: true,
+      schedule: scheduleInfo[0] || null,
+      route_stops: routes,
+      total_stops: routes.length,
+      estimated_duration: routes.length > 0 ? 
+        Math.round((new Date(routes[routes.length - 1].eta) - new Date(routes[0].eta)) / 60000) : 0
+    });
+
+  } catch (error) {
+    console.error("Error fetching route:", error);
+    res.status(500).json({
+      error: "Failed to fetch route information",
+      details: error.message
+    });
+  }
+});
+
+// GET /routing/bus/:bus_id - Get current route for a specific bus
+router.get("/bus/:bus_id", async (req, res) => {
+  try {
+    const { bus_id } = req.params;
+
+    // Get the active schedule for this bus
+    const [activeSchedule] = await pool.query(`
+      SELECT s.schedule_id
+      FROM schedule s
+      JOIN bus_services bs ON s.service_id = bs.service_id
+      WHERE bs.bus_id = ?
+      AND s.departure_time <= NOW()
+      AND s.arrival_time >= NOW()
+      ORDER BY s.departure_time DESC
+      LIMIT 1
+    `, [bus_id]);
+
+    if (activeSchedule.length === 0) {
+      return res.status(404).json({
+        error: "No active schedule found for this bus"
+      });
+    }
+
+    // Get route information for the active schedule
+    const scheduleId = activeSchedule[0].schedule_id;
+    
+    // Reuse the schedule route endpoint logic
+    req.params.schedule_id = scheduleId;
+    return router.handle(req, res);
+
+  } catch (error) {
+    console.error("Error fetching bus route:", error);
+    res.status(500).json({
+      error: "Failed to fetch bus route information",
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

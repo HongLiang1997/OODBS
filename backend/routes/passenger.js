@@ -159,7 +159,7 @@ router.post("/requests", async (req, res) => {
       // updateRouteOrder will handle all route creation with proper cumulative timing
       await updateRouteOrder(schedule_id, assignmentResult.newRouteOrder);
 
-      console.log(`   ✅ Updated route order with ${assignmentResult.newRouteOrder.length} stops`);
+      console.log(`Updated route order with ${assignmentResult.newRouteOrder.length} stops`);
       
       // Verify the data was stored correctly
       const [verifyRequest] = await pool.query(
@@ -191,7 +191,7 @@ router.post("/requests", async (req, res) => {
       
     } else {
       // No suitable schedule found - create pending request WITHOUT bus assignment
-      console.log(`\n❌ NO SUITABLE BUS FOUND`);
+      console.log(`No suitable bus found`);
       console.log(`   Reason: ${assignmentResult.reason}`);
       console.log(`   Creating pending request without bus assignment...`);
       
@@ -513,17 +513,26 @@ async function findOptimalSchedule(pickup_id, location_id, passenger_count) {
     if (candidateBuses.length === 0) {
       console.log(`❌ No active buses found servicing pickup location ${pickup_id}`);
       
-      // Debug: Check what buses exist in general
-      const [allBuses] = await pool.query(`SELECT bus_id, plate_number, status FROM bus LIMIT 5`);
-      console.log(`   Debug - Sample buses in database:`, allBuses);
+      // Debug: Check what buses exist in general - FIXED: Removed LIMIT 5
+      const [allBuses] = await pool.query(`SELECT bus_id, plate_number, status FROM bus ORDER BY bus_id`);
+      console.log(`   Debug - ALL buses in database (including bus 24):`, allBuses);
       
-      // Debug: Check what bus services exist
-      const [allServices] = await pool.query(`SELECT * FROM bus_services LIMIT 5`);
-      console.log(`   Debug - Sample bus services:`, allServices);
+      // Debug: Check what bus services exist for this pickup
+      const [allServices] = await pool.query(`SELECT * FROM bus_services WHERE pickup_id = ? ORDER BY service_id`, [pickup_id]);
+      console.log(`   Debug - ALL services for pickup_id ${pickup_id}:`, allServices);
       
       // Debug: Check what pickup locations exist
       const [allPickups] = await pool.query(`SELECT pickup_id, name FROM pickup_location WHERE pickup_id = ?`, [pickup_id]);
       console.log(`   Debug - Pickup location ${pickup_id}:`, allPickups);
+      
+      // Debug: Check the JOIN that should find active buses
+      const [joinResult] = await pool.query(`
+        SELECT b.bus_id, b.plate_number, b.status, bs.service_id, bs.pickup_id 
+        FROM bus b 
+        JOIN bus_services bs ON b.bus_id = bs.bus_id 
+        WHERE bs.pickup_id = ? AND b.status = 'active'
+      `, [pickup_id]);
+      console.log(`   Debug - Active buses for pickup ${pickup_id} (should include bus 24):`, joinResult);
       return {
         success: false,
         reason: "No active buses found servicing this pickup location"
@@ -570,7 +579,7 @@ async function findOptimalSchedule(pickup_id, location_id, passenger_count) {
         let schedule_id = await getOrCreateScheduleForService(busService.service_id);
         console.log(`Schedule ID: ${schedule_id}`);
         
-        console.log(`\n✅ ASSIGNMENT SUCCESSFUL!`);
+        console.log(`Assignment successful`);
         console.log(`Bus ID: ${busService.bus_id}, Service ID: ${busService.service_id}, Schedule ID: ${schedule_id}`);
         
         return {

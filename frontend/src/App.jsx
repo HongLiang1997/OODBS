@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import PassengerLogin from "./pages/passenger/PassengerLogin";
-import PassengerDashboard from "./pages/passenger/PassengerDashboard";
+import PassengerDashboard from "./pages/passenger/passengerDashboard";
 
 import DriverLogin from "./pages/driver/DriverLogin";
 import DriverDashboard from "./pages/driver/DriverDashboard";

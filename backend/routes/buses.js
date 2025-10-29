@@ -313,7 +313,7 @@ router.put("/:bus_id", async (req, res) => {
       [plate_number, userId, capacity, company, status, bus_id]
     );
 
-    console.log("✅ Bus update completed successfully");
+    console.log("Bus update completed successfully");
     res.json({ 
       message: "Bus updated successfully",
       bus_id: bus_id,
