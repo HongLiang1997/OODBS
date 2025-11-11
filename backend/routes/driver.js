@@ -171,4 +171,69 @@ router.put("/pickup/:route_id", async (req, res) => {
   }
 });
 
+// PUT complete a schedule (mark as completed)
+router.put("/schedule/complete/:schedule_id", async (req, res) => {
+  const { schedule_id } = req.params;
+  
+  try {
+    // Simply update schedule status to completed - no time constraint checks
+    const [result] = await pool.query(`
+      UPDATE schedule 
+      SET status = 'completed'
+      WHERE schedule_id = ?
+    `, [schedule_id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Schedule not found" });
+    }
+    
+    // Log the completion
+    console.log(`Schedule ${schedule_id} marked as completed`);
+    
+    res.json({ 
+      message: "Schedule completed successfully", 
+      schedule_id: schedule_id,
+      status: 'completed'
+    });
+  } catch (err) {
+    console.error('Error completing schedule:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT update schedule status (for on-route, ongoing, etc.)
+router.put("/schedule/status/:schedule_id", async (req, res) => {
+  const { schedule_id } = req.params;
+  const { status } = req.body;
+  
+  if (!status) {
+    return res.status(400).json({ error: "Status is required" });
+  }
+  
+  try {
+    // Update schedule status
+    const [result] = await pool.query(`
+      UPDATE schedule 
+      SET status = ?
+      WHERE schedule_id = ?
+    `, [status, schedule_id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Schedule not found" });
+    }
+    
+    // Log the status update
+    console.log(`Schedule ${schedule_id} status updated to: ${status}`);
+    
+    res.json({ 
+      message: "Schedule status updated successfully", 
+      schedule_id: schedule_id,
+      status: status
+    });
+  } catch (err) {
+    console.error('Error updating schedule status:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

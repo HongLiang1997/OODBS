@@ -327,37 +327,96 @@
 .schedule-selector {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .schedule-option {
   background: white;
   border: 2px solid #e9ecef;
-  border-radius: 8px;
-  padding: 15px;
+  border-radius: 12px;
+  padding: 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .schedule-option:hover {
   background: #f8f9fa;
   border-color: #007bff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .schedule-option.selected {
   background: #e3f2fd;
   border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+}
+
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
 }
 
 .schedule-time {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  color: #007bff;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 4px;
 }
 
+.time-range {
+  font-weight: 700;
+  color: #007bff;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.date-info {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.schedule-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.schedule-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.route-info strong {
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.bus-info {
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Legacy support for old structure */
 .schedule-route strong {
   color: #2c3e50;
   font-size: 1rem;
@@ -374,6 +433,48 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* Trip Completion Section */
+.trip-completion {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.complete-trip-btn {
+  transition: all 0.3s ease !important;
+  font-size: 0.95rem !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.complete-trip-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.complete-trip-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.complete-trip-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+}
+
+/* Status button disabled states */
+.status-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  color: #ffffff !important;
+}
+
+.status-btn:disabled:hover {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  transform: none !important;
 }
 
 .status-btn {

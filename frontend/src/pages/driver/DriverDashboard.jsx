@@ -831,6 +831,120 @@ export default function DriverDashboard() {
     }
   };
 
+  const handleCompleteTrip = async () => {
+    if (!selectedSchedule) {
+      alert('No trip selected to complete');
+      return;
+    }
+
+    // Confirm completion
+    const confirmComplete = window.confirm(
+      `Are you sure you want to complete Schedule #${selectedSchedule.schedule_id}?\n\nThis will mark the trip as finished and clear the current route.`
+    );
+
+    if (!confirmComplete) {
+      return;
+    }
+
+    try {
+      console.log('Completing trip for schedule:', selectedSchedule.schedule_id);
+      
+      // Update schedule status to 'completed'
+      const response = await fetch(`http://localhost:5000/driver/schedule/complete/${selectedSchedule.schedule_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}), // Empty body - just mark as completed
+      });
+
+      if (response.ok) {
+        console.log('✅ Trip completed successfully');
+        
+        // Clear current route and selection
+        clearAllRoutes();
+        setSelectedSchedule(null);
+        setSelectedRoute(null);
+        
+        // Update driver status to inactive
+        await updateDriverStatus('Inactive');
+        
+        // Refresh schedules to show updated status
+        await fetchDriverSchedules();
+        
+        // Show success message
+        alert('Trip completed successfully! 🎉\n\nThe route has been cleared and your status is now inactive.');
+        
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to complete trip:', errorData);
+        alert(`Failed to complete trip: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error completing trip:', error);
+      alert(`Error completing trip: ${error.message}`);
+    }
+  };
+
+  const handleOnRouteStatus = async () => {
+    if (!selectedSchedule) {
+      alert('Please select a schedule first');
+      return;
+    }
+
+    try {
+      console.log('Setting driver status to On-Route and updating schedule status to ongoing');
+      
+      // Update driver status to on-route
+      await updateDriverStatus('On-Route');
+      
+      // Update schedule status to 'ongoing'
+      console.log('Sending request to update schedule status:', {
+        url: `http://localhost:5000/driver/schedule/status/${selectedSchedule.schedule_id}`,
+        method: 'PUT',
+        body: { status: 'ongoing' },
+        schedule_id: selectedSchedule.schedule_id
+      });
+      
+      const response = await fetch(`http://localhost:5000/driver/schedule/status/${selectedSchedule.schedule_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          status: 'ongoing'
+        }),
+      });
+
+      if (response.ok) {
+        console.log('✅ Schedule status updated to ongoing');
+        
+        // Refresh schedules to show updated status
+        await fetchDriverSchedules();
+        
+        // Show success message
+        alert(`Driver status set to On-Route! 🚌\n\nSchedule #${selectedSchedule.schedule_id} is now ongoing.`);
+        
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to update schedule status:', response.status, errorText);
+        console.error('Response headers:', response.headers);
+        
+        // More specific error message
+        if (response.status === 404) {
+          alert(`Schedule #${selectedSchedule.schedule_id} not found. The driver status has been updated, but the schedule could not be found in the database.`);
+        } else if (response.status === 500) {
+          alert(`Server error updating schedule status. The driver status has been updated, but there was a database error: ${errorText}`);
+        } else {
+          alert(`Failed to update schedule status (${response.status}). The driver status has been updated, but there was an issue with the schedule: ${errorText}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error setting on-route status:', error);
+      alert(`Error setting on-route status: ${error.message}`);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("driver");
     window.location.href = "/driver/login";
@@ -1025,6 +1139,144 @@ export default function DriverDashboard() {
             )}
           </div>
         )}
+        
+        {/* Route Stops List - Shows when schedule is selected */}
+        {selectedSchedule && selectedRoute && (
+          <div className="route-stops-panel" style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '12px',
+            padding: '16px',
+            minWidth: '250px',
+            maxWidth: '300px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+            zIndex: 1000,
+            fontFamily: 'Arial, sans-serif'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '12px',
+              paddingBottom: '8px',
+              borderBottom: '2px solid #007bff'
+            }}>
+              <h4 style={{
+                margin: 0,
+                color: '#2c3e50',
+                fontSize: '1rem',
+                fontWeight: '600'
+              }}>
+                🗺️ Route Stops
+              </h4>
+              <span style={{
+                background: '#007bff',
+                color: 'white',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '0.7em',
+                fontWeight: 'bold'
+              }}>
+                Schedule #{selectedSchedule.schedule_id}
+              </span>
+            </div>
+            
+            <div className="stops-list">
+              {/* Pickup Location */}
+              {selectedRoute.pickupLocation && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  margin: '4px 0',
+                  background: 'linear-gradient(135deg, #FF6B00, #FF8533)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontWeight: '500',
+                  fontSize: '0.9em',
+                  boxShadow: '0 2px 4px rgba(255, 107, 0, 0.3)'
+                }}>
+                  <span style={{
+                    background: 'rgba(255, 255, 255, 0.3)',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: '10px',
+                    fontWeight: 'bold',
+                    fontSize: '0.8em'
+                  }}>
+                    P
+                  </span>
+                  <div>
+                    <div style={{ fontSize: '0.75em', opacity: 0.9 }}>Pick-up Location</div>
+                    <div>{selectedRoute.pickupLocation.name}</div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Destination Stops */}
+              {selectedRoute.stops && selectedRoute.stops
+                .sort((a, b) => a.stop_order - b.stop_order)
+                .map((stop, index) => (
+                <div key={stop.stop_order || index} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  margin: '4px 0',
+                  background: 'linear-gradient(135deg, #007bff, #0056b3)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontWeight: '500',
+                  fontSize: '0.9em',
+                  boxShadow: '0 2px 4px rgba(0, 123, 255, 0.3)'
+                }}>
+                  <span style={{
+                    background: 'rgba(255, 255, 255, 0.3)',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: '10px',
+                    fontWeight: 'bold',
+                    fontSize: '0.8em'
+                  }}>
+                    {stop.stop_order || (index + 1)}
+                  </span>
+                  <div>
+                    <div style={{ fontSize: '0.75em', opacity: 0.9 }}>Stop {stop.stop_order || (index + 1)}</div>
+                    <div>{stop.location_name}</div>
+                    {stop.passenger_name && (
+                      <div style={{ fontSize: '0.75em', opacity: 0.8, marginTop: '2px' }}>
+                        👤 {stop.passenger_name}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {/* No stops message */}
+              {(!selectedRoute.stops || selectedRoute.stops.length === 0) && !selectedRoute.pickupLocation && (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '20px',
+                  color: '#6c757d',
+                  fontSize: '0.9em'
+                }}>
+                  No route data available
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Navigation */}
@@ -1042,22 +1294,107 @@ export default function DriverDashboard() {
               {schedules.length === 0 ? (
                 <p>No schedules available</p>
               ) : (
-                schedules.map(schedule => (
-                  <div 
-                    key={schedule.schedule_id} 
-                    className={`schedule-option ${selectedSchedule?.schedule_id === schedule.schedule_id ? 'selected' : ''}`}
-                    onClick={() => handleScheduleSelect(schedule)}
-                  >
-                    <div className="schedule-time">
-                      <span>{schedule.departure_time}</span>
-                      <span>→ {schedule.arrival_time}</span>
+                schedules.map(schedule => {
+                  // Format times to show only hours and minutes
+                  const formatTime = (datetime) => {
+                    if (!datetime) return 'N/A';
+                    const date = new Date(datetime);
+                    return date.toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: true 
+                    });
+                  };
+                  
+                  // Format date to show day
+                  const formatDate = (datetime) => {
+                    if (!datetime) return 'N/A';
+                    const date = new Date(datetime);
+                    const today = new Date();
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    
+                    if (date.toDateString() === today.toDateString()) {
+                      return 'Today';
+                    } else if (date.toDateString() === tomorrow.toDateString()) {
+                      return 'Tomorrow';
+                    } else {
+                      return date.toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      });
+                    }
+                  };
+                  
+                  // Determine schedule description
+                  const getScheduleDescription = () => {
+                    if (schedule.isAmShift && schedule.isPmShift) {
+                      return 'Full Day Service';
+                    } else if (schedule.isAmShift) {
+                      return 'Morning Service';
+                    } else if (schedule.isPmShift) {
+                      return 'Evening Service';
+                    } else {
+                      return 'Bus Service';
+                    }
+                  };
+                  
+                  // Status display
+                  const getStatusDisplay = (status) => {
+                    const statusColors = {
+                      'onboarding': { color: '#28a745', label: 'Ready to Board' },
+                      'ongoing': { color: '#ffc107', label: 'In Progress' },
+                      'completed': { color: '#6c757d', label: 'Completed' },
+                      'cancelled': { color: '#dc3545', label: 'Cancelled' }
+                    };
+                    
+                    return statusColors[status] || { color: '#007bff', label: 'Active' };
+                  };
+                  
+                  const statusInfo = getStatusDisplay(schedule.status);
+                  
+                  return (
+                    <div 
+                      key={schedule.schedule_id} 
+                      className={`schedule-option ${selectedSchedule?.schedule_id === schedule.schedule_id ? 'selected' : ''}`}
+                      onClick={() => handleScheduleSelect(schedule)}
+                    >
+                      <div className="schedule-header">
+                        <div className="schedule-time">
+                          <span className="time-range">
+                            {formatTime(schedule.departure_time)} - {formatTime(schedule.arrival_time)}
+                          </span>
+                          <span className="date-info">{formatDate(schedule.departure_time)}</span>
+                        </div>
+                        <div className="schedule-status">
+                          <span 
+                            className="status-badge"
+                            style={{ 
+                              backgroundColor: statusInfo.color + '20', 
+                              color: statusInfo.color,
+                              border: `1px solid ${statusInfo.color}`,
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontSize: '0.75em',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {statusInfo.label}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="schedule-details">
+                        <div className="route-info">
+                          <strong>{getScheduleDescription()}</strong>
+                          <div className="bus-info">
+                            🚌 {schedule.plate_number || 'Bus'} • Schedule #{schedule.schedule_id}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="schedule-route">
-                      <strong>{schedule.route_name || 'Route'}</strong>
-                      <p>{schedule.start_location} → {schedule.end_location}</p>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -1069,27 +1406,126 @@ export default function DriverDashboard() {
               <button 
                 className={`status-btn status-active ${driverStatus === 'active' ? 'active' : ''}`}
                 onClick={() => updateDriverStatus('Active')}
+                disabled={driverStatus === 'on-route'}
+                style={{
+                  opacity: driverStatus === 'on-route' ? 0.5 : 1,
+                  cursor: driverStatus === 'on-route' ? 'not-allowed' : 'pointer'
+                }}
+                title={driverStatus === 'on-route' ? 'Complete your current trip first' : 'Set status to Active'}
               >
                 <FaPlay /> Active
               </button>
               <button 
                 className={`status-btn status-onroute ${driverStatus === 'on-route' ? 'active' : ''}`}
-                onClick={() => updateDriverStatus('On-Route')}
+                onClick={() => handleOnRouteStatus()}
+                disabled={!selectedSchedule || driverStatus === 'on-route'}
+                style={{
+                  opacity: (!selectedSchedule || driverStatus === 'on-route') ? 0.5 : 1,
+                  cursor: (!selectedSchedule || driverStatus === 'on-route') ? 'not-allowed' : 'pointer'
+                }}
+                title={
+                  driverStatus === 'on-route' 
+                    ? 'Already on route - complete trip to change status'
+                    : !selectedSchedule 
+                    ? 'Select a schedule first' 
+                    : 'Set status to On-Route'
+                }
               >
                 <FaClock /> On Route
               </button>
               <button 
                 className={`status-btn status-break ${driverStatus === 'break' ? 'active' : ''}`}
                 onClick={() => updateDriverStatus('Break')}
+                disabled={driverStatus === 'on-route'}
+                style={{
+                  opacity: driverStatus === 'on-route' ? 0.5 : 1,
+                  cursor: driverStatus === 'on-route' ? 'not-allowed' : 'pointer'
+                }}
+                title={driverStatus === 'on-route' ? 'Complete your current trip first' : 'Set status to Break'}
               >
                 <FaPause /> Break
               </button>
               <button 
                 className={`status-btn status-inactive ${driverStatus === 'inactive' ? 'active' : ''}`}
                 onClick={() => updateDriverStatus('Inactive')}
+                disabled={driverStatus === 'on-route'}
+                style={{
+                  opacity: driverStatus === 'on-route' ? 0.5 : 1,
+                  cursor: driverStatus === 'on-route' ? 'not-allowed' : 'pointer'
+                }}
+                title={driverStatus === 'on-route' ? 'Complete your current trip first' : 'Set status to Inactive'}
               >
                 <FaStop /> Inactive
               </button>
+            </div>
+            
+            {/* On-Route Warning */}
+            {driverStatus === 'on-route' && (
+              <div style={{
+                background: 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                color: '#000',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                margin: '15px 0',
+                border: '2px solid #fd7e14',
+                textAlign: 'center',
+                fontWeight: '600',
+                boxShadow: '0 3px 10px rgba(253, 126, 20, 0.3)'
+              }}>
+                🚨 <strong>ON ROUTE</strong> 🚨<br/>
+                <span style={{ fontSize: '0.9em', fontWeight: '400' }}>
+                  You must complete your current trip before changing status
+                </span>
+              </div>
+            )}
+            
+            {/* Trip Completion */}
+            <div className="trip-completion">
+              <h4 style={{ margin: '20px 0 10px 0', color: '#2c3e50', fontSize: '1rem' }}>
+                <FaRoute /> Trip Control
+              </h4>
+              <button 
+                className="complete-trip-btn"
+                onClick={handleCompleteTrip}
+                disabled={!selectedSchedule}
+                style={{
+                  width: '100%',
+                  padding: '12px 20px',
+                  background: selectedSchedule ? '#28a745' : '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: selectedSchedule ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedSchedule) {
+                    e.target.style.background = '#218838';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedSchedule) {
+                    e.target.style.background = '#28a745';
+                  }
+                }}
+              >
+                <FaStop /> {selectedSchedule ? 'Complete Selected Trip' : 'No Trip Selected'}
+              </button>
+              {selectedSchedule && (
+                <div style={{ 
+                  marginTop: '8px', 
+                  fontSize: '0.85rem', 
+                  color: '#6c757d',
+                  textAlign: 'center' 
+                }}>
+                  Active: Schedule #{selectedSchedule.schedule_id}
+                </div>
+              )}
             </div>
           </div>
         </div>
