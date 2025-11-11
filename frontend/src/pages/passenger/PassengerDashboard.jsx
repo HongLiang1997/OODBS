@@ -19,8 +19,7 @@ export default function PassengerDashboard() {
   // State for booking form
   const [bookingForm, setBookingForm] = useState({
     pickup_id: '',
-    location_id: '',
-    passenger_count: '1'
+    location_id: ''
   });
 
   // State for personal information form
@@ -117,7 +116,7 @@ export default function PassengerDashboard() {
           passenger_id: passenger.user_id,
           pickup_location_id: bookingForm.pickup_id,
           destination_id: bookingForm.location_id,
-          passenger_count: parseInt(bookingForm.passenger_count),
+          passenger_count: 1, // Always 1 passenger
           requested_pickup_time: new Date().toISOString() // Use current time as requested time
         })
       });
@@ -129,8 +128,7 @@ export default function PassengerDashboard() {
               (result.bus_assignment ? `\nBus: ${result.bus_assignment.plate_number}` : ''));
         setBookingForm({
           pickup_id: '',
-          location_id: '',
-          passenger_count: '1'
+          location_id: ''
         });
         fetchPastRequests(passenger.user_id);
       } else {
@@ -292,24 +290,6 @@ export default function PassengerDashboard() {
                           {destination.name}
                         </option>
                       ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="passenger-count" className="form-label">Number of Passengers</label>
-                    <select 
-                      id="passenger-count" 
-                      className="form-select"
-                      value={bookingForm.passenger_count}
-                      onChange={(e) => setBookingForm({...bookingForm, passenger_count: e.target.value})}
-                      required
-                    >
-                      <option value="1">1 Passenger</option>
-                      <option value="2">2 Passengers</option>
-                      <option value="3">3 Passengers</option>
-                      <option value="4">4 Passengers</option>
-                      <option value="5">5+ Passengers</option>
                     </select>
                   </div>
                 </div>

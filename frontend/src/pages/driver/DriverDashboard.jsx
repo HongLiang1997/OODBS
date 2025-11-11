@@ -1014,115 +1014,52 @@ export default function DriverDashboard() {
         
         {/* GPS Loading Overlay - only show when getting GPS */}
         {gpsLoading && (
-          <>
-            <style>
-              {`
-                @keyframes spin {
-                  0% { transform: rotate(0deg); }
-                  100% { transform: rotate(360deg); }
-                }
-                @keyframes pulse {
-                  0%, 100% { opacity: 0.8; }
-                  50% { opacity: 1; }
-                }
-              `}
-            </style>
-            <div className="gps-loading-overlay" style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: 'rgba(0,0,0,0.85)',
-              color: 'white',
-              padding: '12px 16px',
-              borderRadius: '10px',
-              fontSize: '0.9em',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '8px',
-              minWidth: '200px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div className="spinner" style={{
-                  width: '18px',
-                  height: '18px',
-                  border: '2px solid #ffffff40',
-                  borderTop: '2px solid #ffffff',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }}></div>
-                <span style={{ animation: 'pulse 2s ease-in-out infinite' }}>📍 Getting GPS location...</span>
+          <div className="gps-loading-overlay">
+            <div className="gps-loading-content">
+              <div className="gps-loading-spinner"></div>
+              <span className="gps-loading-text">📍 Getting GPS location...</span>
+            </div>
+            
+            {!locationError && (
+              <div className="gps-loading-subtitle">
+                This may take a moment if you're indoors
               </div>
-              
-              {!locationError && (
-                <div style={{ fontSize: '0.75em', color: '#ccc', textAlign: 'center' }}>
-                  This may take a moment if you're indoors
-                </div>
+            )}
+            
+            <div className="gps-loading-buttons">
+              {/* Skip button */}
+              {showSkipButton && (
+                <button 
+                  onClick={skipLocationAndContinue}
+                  className="gps-skip-btn"
+                >
+                  Skip GPS
+                </button>
               )}
-              
-              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                {/* Skip button */}
-                {showSkipButton && (
-                  <button 
-                    onClick={skipLocationAndContinue}
-                    style={{
-                      padding: '6px 12px',
-                      background: '#28a745',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.8em',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    Skip GPS
-                  </button>
-                )}
-                
-                {locationError && (
-                  <button 
-                    onClick={() => {
-                      setLocationError(null);
-                      setShowSkipButton(false);
-                      setGpsLoading(true);
-                      if (map && window.google && window.google.maps) {
-                        initializeTracking(map, window.google.maps);
-                      }
-                    }}
-                    style={{
-                      padding: '6px 12px',
-                      background: '#007bff',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.8em'
-                    }}
-                  >
-                    🔄 Retry
-                  </button>
-                )}
-              </div>
               
               {locationError && (
-                <div style={{ 
-                  fontSize: '0.75em', 
-                  color: '#ff6b6b', 
-                  textAlign: 'center', 
-                  marginTop: '4px',
-                  padding: '4px',
-                  background: 'rgba(255, 107, 107, 0.1)',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(255, 107, 107, 0.3)'
-                }}>
-                  ⚠️ {locationError}
-                </div>
+                <button 
+                  onClick={() => {
+                    setLocationError(null);
+                    setShowSkipButton(false);
+                    setGpsLoading(true);
+                    if (map && window.google && window.google.maps) {
+                      initializeTracking(map, window.google.maps);
+                    }
+                  }}
+                  className="gps-retry-btn"
+                >
+                  🔄 Retry
+                </button>
               )}
             </div>
-          </>
+            
+            {locationError && (
+              <div className="gps-error-message">
+                ⚠️ {locationError}
+              </div>
+            )}
+          </div>
         )}
         
         {/* Navigation Status */}
@@ -1142,45 +1079,12 @@ export default function DriverDashboard() {
         
         {/* Route Stops List - Shows when schedule is selected */}
         {selectedSchedule && selectedRoute && (
-          <div className="route-stops-panel" style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '12px',
-            padding: '16px',
-            minWidth: '250px',
-            maxWidth: '300px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-            border: '1px solid rgba(0, 0, 0, 0.1)',
-            zIndex: 1000,
-            fontFamily: 'Arial, sans-serif'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '12px',
-              paddingBottom: '8px',
-              borderBottom: '2px solid #007bff'
-            }}>
-              <h4 style={{
-                margin: 0,
-                color: '#2c3e50',
-                fontSize: '1rem',
-                fontWeight: '600'
-              }}>
+          <div className="route-stops-panel">
+            <div className="route-stops-header">
+              <h4 className="route-stops-title">
                 🗺️ Route Stops
               </h4>
-              <span style={{
-                background: '#007bff',
-                color: 'white',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontSize: '0.7em',
-                fontWeight: 'bold'
-              }}>
+              <span className="route-schedule-badge">
                 Schedule #{selectedSchedule.schedule_id}
               </span>
             </div>
@@ -1188,35 +1092,11 @@ export default function DriverDashboard() {
             <div className="stops-list">
               {/* Pickup Location */}
               {selectedRoute.pickupLocation && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  margin: '4px 0',
-                  background: 'linear-gradient(135deg, #FF6B00, #FF8533)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontWeight: '500',
-                  fontSize: '0.9em',
-                  boxShadow: '0 2px 4px rgba(255, 107, 0, 0.3)'
-                }}>
-                  <span style={{
-                    background: 'rgba(255, 255, 255, 0.3)',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: '10px',
-                    fontWeight: 'bold',
-                    fontSize: '0.8em'
-                  }}>
-                    P
-                  </span>
-                  <div>
-                    <div style={{ fontSize: '0.75em', opacity: 0.9 }}>Pick-up Location</div>
-                    <div>{selectedRoute.pickupLocation.name}</div>
+                <div className="stop-item pickup-stop">
+                  <span className="stop-icon">P</span>
+                  <div className="stop-info">
+                    <div className="stop-label">Pick-up Location</div>
+                    <div className="stop-name">{selectedRoute.pickupLocation.name}</div>
                   </div>
                 </div>
               )}
@@ -1225,37 +1105,15 @@ export default function DriverDashboard() {
               {selectedRoute.stops && selectedRoute.stops
                 .sort((a, b) => a.stop_order - b.stop_order)
                 .map((stop, index) => (
-                <div key={stop.stop_order || index} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  margin: '4px 0',
-                  background: 'linear-gradient(135deg, #007bff, #0056b3)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontWeight: '500',
-                  fontSize: '0.9em',
-                  boxShadow: '0 2px 4px rgba(0, 123, 255, 0.3)'
-                }}>
-                  <span style={{
-                    background: 'rgba(255, 255, 255, 0.3)',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: '10px',
-                    fontWeight: 'bold',
-                    fontSize: '0.8em'
-                  }}>
+                <div key={stop.stop_order || index} className="stop-item destination-stop">
+                  <span className="stop-icon">
                     {stop.stop_order || (index + 1)}
                   </span>
-                  <div>
-                    <div style={{ fontSize: '0.75em', opacity: 0.9 }}>Stop {stop.stop_order || (index + 1)}</div>
-                    <div>{stop.location_name}</div>
+                  <div className="stop-info">
+                    <div className="stop-label">Stop {stop.stop_order || (index + 1)}</div>
+                    <div className="stop-name">{stop.location_name}</div>
                     {stop.passenger_name && (
-                      <div style={{ fontSize: '0.75em', opacity: 0.8, marginTop: '2px' }}>
+                      <div className="stop-passenger">
                         👤 {stop.passenger_name}
                       </div>
                     )}
@@ -1265,12 +1123,7 @@ export default function DriverDashboard() {
               
               {/* No stops message */}
               {(!selectedRoute.stops || selectedRoute.stops.length === 0) && !selectedRoute.pickupLocation && (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '20px',
-                  color: '#6c757d',
-                  fontSize: '0.9em'
-                }}>
+                <div className="no-route-data">
                   No route data available
                 </div>
               )}
@@ -1373,11 +1226,7 @@ export default function DriverDashboard() {
                             style={{ 
                               backgroundColor: statusInfo.color + '20', 
                               color: statusInfo.color,
-                              border: `1px solid ${statusInfo.color}`,
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontSize: '0.75em',
-                              fontWeight: 'bold'
+                              border: `1px solid ${statusInfo.color}`
                             }}
                           >
                             {statusInfo.label}
@@ -1407,10 +1256,6 @@ export default function DriverDashboard() {
                 className={`status-btn status-active ${driverStatus === 'active' ? 'active' : ''}`}
                 onClick={() => updateDriverStatus('Active')}
                 disabled={driverStatus === 'on-route'}
-                style={{
-                  opacity: driverStatus === 'on-route' ? 0.5 : 1,
-                  cursor: driverStatus === 'on-route' ? 'not-allowed' : 'pointer'
-                }}
                 title={driverStatus === 'on-route' ? 'Complete your current trip first' : 'Set status to Active'}
               >
                 <FaPlay /> Active
@@ -1419,10 +1264,6 @@ export default function DriverDashboard() {
                 className={`status-btn status-onroute ${driverStatus === 'on-route' ? 'active' : ''}`}
                 onClick={() => handleOnRouteStatus()}
                 disabled={!selectedSchedule || driverStatus === 'on-route'}
-                style={{
-                  opacity: (!selectedSchedule || driverStatus === 'on-route') ? 0.5 : 1,
-                  cursor: (!selectedSchedule || driverStatus === 'on-route') ? 'not-allowed' : 'pointer'
-                }}
                 title={
                   driverStatus === 'on-route' 
                     ? 'Already on route - complete trip to change status'
@@ -1437,10 +1278,6 @@ export default function DriverDashboard() {
                 className={`status-btn status-break ${driverStatus === 'break' ? 'active' : ''}`}
                 onClick={() => updateDriverStatus('Break')}
                 disabled={driverStatus === 'on-route'}
-                style={{
-                  opacity: driverStatus === 'on-route' ? 0.5 : 1,
-                  cursor: driverStatus === 'on-route' ? 'not-allowed' : 'pointer'
-                }}
                 title={driverStatus === 'on-route' ? 'Complete your current trip first' : 'Set status to Break'}
               >
                 <FaPause /> Break
@@ -1449,10 +1286,6 @@ export default function DriverDashboard() {
                 className={`status-btn status-inactive ${driverStatus === 'inactive' ? 'active' : ''}`}
                 onClick={() => updateDriverStatus('Inactive')}
                 disabled={driverStatus === 'on-route'}
-                style={{
-                  opacity: driverStatus === 'on-route' ? 0.5 : 1,
-                  cursor: driverStatus === 'on-route' ? 'not-allowed' : 'pointer'
-                }}
                 title={driverStatus === 'on-route' ? 'Complete your current trip first' : 'Set status to Inactive'}
               >
                 <FaStop /> Inactive
@@ -1461,68 +1294,28 @@ export default function DriverDashboard() {
             
             {/* On-Route Warning */}
             {driverStatus === 'on-route' && (
-              <div style={{
-                background: 'linear-gradient(135deg, #ffc107, #fd7e14)',
-                color: '#000',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                margin: '15px 0',
-                border: '2px solid #fd7e14',
-                textAlign: 'center',
-                fontWeight: '600',
-                boxShadow: '0 3px 10px rgba(253, 126, 20, 0.3)'
-              }}>
-                🚨 <strong>ON ROUTE</strong> 🚨<br/>
-                <span style={{ fontSize: '0.9em', fontWeight: '400' }}>
+              <div className="on-route-warning">
+                <div className="on-route-warning-title">🚨 ON ROUTE 🚨</div>
+                <div className="on-route-warning-message">
                   You must complete your current trip before changing status
-                </span>
+                </div>
               </div>
             )}
             
             {/* Trip Completion */}
             <div className="trip-completion">
-              <h4 style={{ margin: '20px 0 10px 0', color: '#2c3e50', fontSize: '1rem' }}>
+              <h4 className="trip-completion-title">
                 <FaRoute /> Trip Control
               </h4>
               <button 
-                className="complete-trip-btn"
+                className={`complete-trip-btn ${selectedSchedule ? 'enabled' : 'disabled'}`}
                 onClick={handleCompleteTrip}
                 disabled={!selectedSchedule}
-                style={{
-                  width: '100%',
-                  padding: '12px 20px',
-                  background: selectedSchedule ? '#28a745' : '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: '600',
-                  cursor: selectedSchedule ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedSchedule) {
-                    e.target.style.background = '#218838';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedSchedule) {
-                    e.target.style.background = '#28a745';
-                  }
-                }}
               >
                 <FaStop /> {selectedSchedule ? 'Complete Selected Trip' : 'No Trip Selected'}
               </button>
               {selectedSchedule && (
-                <div style={{ 
-                  marginTop: '8px', 
-                  fontSize: '0.85rem', 
-                  color: '#6c757d',
-                  textAlign: 'center' 
-                }}>
+                <div className="trip-status-info">
                   Active: Schedule #{selectedSchedule.schedule_id}
                 </div>
               )}

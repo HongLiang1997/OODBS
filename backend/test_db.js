@@ -5,7 +5,7 @@ async function testDatabase() {
     const connection = await mysql.createConnection({
       host: 'localhost',
       user: 'root',
-      password: '12345678',
+      password: 'P@ssw0rd',
       database: 'oodbs'
     });
 
@@ -56,6 +56,54 @@ async function testDatabase() {
     console.log('\n🛣️ ROUTES table structure:');
     const [routesStructure] = await connection.query("DESCRIBE routes");
     console.log(routesStructure);
+
+    // Check current passenger requests
+    console.log('\n👥 Current passenger requests:');
+    const [currentRequests] = await connection.query(`
+      SELECT request_id, user_id, bus_id, pickup_id, location_id, 
+             passenger_count, request_status, schedule_id, tier_id
+      FROM passenger_requests 
+      ORDER BY request_id DESC 
+      LIMIT 10
+    `);
+    console.log(currentRequests);
+
+    // Check current routes data
+    console.log('\n🛣️ Current routes:');
+    const [currentRoutes] = await connection.query(`
+      SELECT route_id, schedule_id, request_id, tier_id, stop_order, eta
+      FROM routes 
+      ORDER BY schedule_id, stop_order 
+      LIMIT 20
+    `);
+    console.log(currentRoutes);
+
+    // Show route distribution by request_id
+    console.log('\n📊 Route distribution by request_id:');
+    const [routeStats] = await connection.query(`
+      SELECT request_id, COUNT(*) as route_count
+      FROM routes 
+      GROUP BY request_id 
+      ORDER BY request_id
+    `);
+    console.log(routeStats);
+
+    // Check all routes (not just recent ones)
+    console.log('\n🛣️ ALL routes in database:');
+    const [allRoutes] = await connection.query(`
+      SELECT route_id, schedule_id, request_id, tier_id, stop_order, eta
+      FROM routes 
+      ORDER BY route_id
+    `);
+    console.log('Total routes:', allRoutes.length);
+    if (allRoutes.length > 10) {
+      console.log('First 5 routes:');
+      console.log(allRoutes.slice(0, 5));
+      console.log('Last 5 routes:');
+      console.log(allRoutes.slice(-5));
+    } else {
+      console.log(allRoutes);
+    }
 
     await connection.end();
     console.log('\n✅ Database test completed');

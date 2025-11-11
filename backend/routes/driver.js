@@ -176,19 +176,26 @@ router.put("/schedule/complete/:schedule_id", async (req, res) => {
   const { schedule_id } = req.params;
   
   try {
-    // Simply update schedule status to completed - no time constraint checks
-    const [result] = await pool.query(`
+    // Update schedule status to completed
+    const [scheduleResult] = await pool.query(`
       UPDATE schedule 
       SET status = 'completed'
       WHERE schedule_id = ?
     `, [schedule_id]);
     
-    if (result.affectedRows === 0) {
+    if (scheduleResult.affectedRows === 0) {
       return res.status(404).json({ error: "Schedule not found" });
     }
+
+    // Also mark all associated passenger requests as completed
+    const [requestResult] = await pool.query(`
+      UPDATE passenger_requests 
+      SET request_status = 0
+      WHERE schedule_id = ? AND request_status = 1
+    `, [schedule_id]);
     
     // Log the completion
-    console.log(`Schedule ${schedule_id} marked as completed`);
+    console.log(`Schedule ${schedule_id} marked as completed. Updated ${requestResult.affectedRows} passenger requests.`);
     
     res.json({ 
       message: "Schedule completed successfully", 
