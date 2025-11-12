@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../../styles/passenger/passenger-dashboard.css";
 import PassengerNav from "../../components/passenger/PassengerNav";
-import { FaBus, FaTicketAlt, FaMapMarkerAlt } from "react-icons/fa";
+import { FaBus, FaTicketAlt, FaMapMarkerAlt, FaClock, FaUser, FaPhone, FaRoute } from "react-icons/fa";
 
 export default function PassengerDashboard() {
   const passenger = JSON.parse(localStorage.getItem("passenger"));
@@ -40,6 +40,10 @@ export default function PassengerDashboard() {
     error: null
   });
 
+  // State for current trip status
+  const [currentTrip, setCurrentTrip] = useState(null);
+  const [loadingCurrentTrip, setLoadingCurrentTrip] = useState(false);
+
   // Fetch data on component mount
   useEffect(() => {
     fetchPickupLocations();
@@ -48,6 +52,7 @@ export default function PassengerDashboard() {
     // Pre-populate personal info and fetch past requests only once
     if (passenger?.user_id) {
       fetchPastRequests(passenger.user_id);
+      fetchCurrentTrip(passenger.user_id);
       setPersonalInfo({
         full_name: passenger.full_name || '',
         email: passenger.email || '',
@@ -55,6 +60,17 @@ export default function PassengerDashboard() {
       });
     }
   }, []); // Empty dependency array to run only once on mount
+
+  // Refresh current trip status every 30 seconds
+  useEffect(() => {
+    if (passenger?.user_id && currentTrip) {
+      const interval = setInterval(() => {
+        fetchCurrentTrip(passenger.user_id);
+      }, 30000); // 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [passenger?.user_id, currentTrip]);
 
   // API calls
   const fetchPickupLocations = async () => {
@@ -98,6 +114,27 @@ export default function PassengerDashboard() {
     }
   };
 
+  const fetchCurrentTrip = async (userId) => {
+    setLoadingCurrentTrip(true);
+    try {
+      console.log('Fetching current trip for user:', userId);
+      const response = await fetch(`http://localhost:5000/passenger/current-trip/${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Current trip response:', data);
+        setCurrentTrip(data.trip || null);
+      } else {
+        console.log('No current trip found or error:', response.status);
+        setCurrentTrip(null);
+      }
+    } catch (error) {
+      console.error('Error fetching current trip:', error);
+      setCurrentTrip(null);
+    } finally {
+      setLoadingCurrentTrip(false);
+    }
+  };
+
   // Form handlers
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
@@ -131,6 +168,7 @@ export default function PassengerDashboard() {
           location_id: ''
         });
         fetchPastRequests(passenger.user_id);
+        fetchCurrentTrip(passenger.user_id); // Refresh current trip status
       } else {
         alert('ℹ️ ' + result.message + 
               (result.reason === 'THRESHOLD_EXCEEDED' ? '\n\n⚠️ Traffic analysis shows this route would cause significant delays for other passengers.' :
@@ -247,60 +285,243 @@ export default function PassengerDashboard() {
       
       <div className="passenger-main-content">
         <div className="passenger-cards-container">
-          {/* Book a Service Card */}
+          {/* Conditional Booking/Trip Status Card */}
           <div className="passenger-dashboard-card">
             <div className="card-header">
               <div className="card-title">
                 <FaBus className="card-icon" />
-                <h3>Book a Service</h3>
+                <h3>{currentTrip ? 'Current Trip Status' : 'Book a Service'}</h3>
               </div>
             </div>
             <div className="card-content">
-              <form className="booking-form" onSubmit={handleBookingSubmit}>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="pickup-location" className="form-label">Pickup Location</label>
-                    <select 
-                      id="pickup-location" 
-                      className="form-select" 
-                      value={bookingForm.pickup_id}
-                      onChange={(e) => setBookingForm({...bookingForm, pickup_id: e.target.value})}
-                      required
-                    >
-                      <option value="">Select pickup location...</option>
-                      {pickupLocations.map(location => (
-                        <option key={location.pickup_id} value={location.pickup_id}>
-                          {location.name} ({location.type})
-                        </option>
-                      ))}
-                    </select>
+              {/* Debug info - remove in production */}
+              {console.log('Rendering card content - currentTrip:', currentTrip, 'loadingCurrentTrip:', loadingCurrentTrip)}
+              
+              {loadingCurrentTrip ? (
+                <div className="loading-status">
+                  <p>Loading trip status...</p>
+                </div>
+              ) : currentTrip ? (
+                // Trip Status Card - Shows when user has an active trip
+                <div className="trip-status-container">
+                  <div className="trip-status-header">
+                    <div className="status-badges">
+                      <div className={`trip-status-badge ${currentTrip.trip_status || 'pending'}`}>
+                        <FaClock className="status-icon" />
+                        <span>{(currentTrip.trip_status || 'PENDING').toUpperCase()}</span>
+                      </div>
+                      <div className="request-status">
+                        <span className={`request-badge ${currentTrip.request_status ? 'approved' : 'pending'}`}>
+                          {currentTrip.request_status ? 'APPROVED' : 'PENDING APPROVAL'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="destination" className="form-label">Destination</label>
-                    <select 
-                      id="destination" 
-                      className="form-select"
-                      value={bookingForm.location_id}
-                      onChange={(e) => setBookingForm({...bookingForm, location_id: e.target.value})}
-                      required
-                    >
-                      <option value="">Select destination...</option>
-                      {destinations.map(destination => (
-                        <option key={destination.location_id} value={destination.location_id}>
-                          {destination.name}
-                        </option>
-                      ))}
-                    </select>
+                  
+                  <div className="trip-details">
+                    <div className="trip-main-info">
+                      {currentTrip.route && currentTrip.route.length > 0 ? (
+                        <div className="route-stops">
+                          <h4><FaRoute className="section-icon" /> Route Stops</h4>
+                          <div className="simple-stops-list">
+                            {currentTrip.route.map((stop, index) => {
+                              const isCurrentUserPickup = stop.is_current_user && stop.stop_type === 'pickup';
+                              const isCurrentUserDestination = stop.is_current_user_destination === true || (stop.is_current_user && stop.stop_type === 'destination');
+                              const stopClasses = `simple-stop ${stop.is_current_user ? 'your-stop' : ''} ${isCurrentUserDestination ? 'your-destination' : ''}`;
+                              
+                              console.log('Stop data:', {
+                                index,
+                                stop_name: stop.stop_name,
+                                stop_type: stop.stop_type,
+                                is_current_user: stop.is_current_user,
+                                is_current_user_destination: stop.is_current_user_destination,
+                                isCurrentUserPickup,
+                                isCurrentUserDestination,
+                                stopClasses,
+                                request_destination_id: stop.request_destination_id,
+                                stop_destination_id: stop.stop_destination_id
+                              });
+                              
+                              return (
+                                <div key={stop.route_id || index} className={stopClasses}>
+                                  <div className="stop-number">{stop.stop_order}</div>
+                                  <div className="stop-content">
+                                    <div className="stop-name">
+                                      <FaMapMarkerAlt className={stop.stop_type === 'pickup' ? 'pickup-icon' : 'destination-icon'} />
+                                      {stop.stop_name}
+                                      {isCurrentUserPickup && <span className="you-tag">YOU</span>}
+                                      {isCurrentUserDestination && <span className="destination-tag">YOUR DESTINATION</span>}
+                                    </div>
+                                    <div className="stop-info">
+                                      {stop.passenger_name && !stop.is_current_user && <span>for {stop.passenger_name}</span>}
+                                      {stop.eta && <span className="eta">ETA: {new Date(stop.eta).toLocaleTimeString()}</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="route-stops">
+                          <h4><FaRoute className="section-icon" /> Your Trip</h4>
+                          <div className="simple-route">
+                            <div className="simple-stop your-stop">
+                              <div className="stop-number">1</div>
+                              <div className="stop-content">
+                                <div className="stop-name">
+                                  <FaMapMarkerAlt className="pickup-icon" />
+                                  {currentTrip.pickup_name || 'Pickup Location'}
+                                  <span className="you-tag">YOU</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="simple-stop your-stop your-destination">
+                              <div className="stop-number">2</div>
+                              <div className="stop-content">
+                                <div className="stop-name">
+                                  <FaMapMarkerAlt className="destination-icon" />
+                                  {currentTrip.destination_name || 'Destination'}
+                                  <span className="destination-tag">YOUR DESTINATION</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    
+                      {currentTrip.bus_id && currentTrip.plate_number && (
+                        <div className="bus-assignment">
+                          <h4><FaBus className="section-icon" /> Assigned Bus</h4>
+                          <div className="bus-info-grid">
+                            <div className="bus-detail">
+                              <span className="detail-label">Bus:</span>
+                              <span className="detail-value">{currentTrip.plate_number}</span>
+                            </div>
+                            {currentTrip.bus_company && (
+                              <div className="bus-detail">
+                                <span className="detail-label">Company:</span>
+                                <span className="detail-value">{currentTrip.bus_company}</span>
+                              </div>
+                            )}
+                            {currentTrip.driver_name && (
+                              <div className="bus-detail">
+                                <span className="detail-label">Driver:</span>
+                                <span className="detail-value">{currentTrip.driver_name}</span>
+                              </div>
+                            )}
+                            {currentTrip.driver_phone && (
+                              <div className="bus-detail">
+                                <span className="detail-label">Contact:</span>
+                                <span className="detail-value">
+                                  <FaPhone className="phone-icon" />
+                                  {currentTrip.driver_phone}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {currentTrip.schedule_id && (
+                      <div className="schedule-info">
+                        <h4><FaClock className="section-icon" /> Schedule Information</h4>
+                        <div className="schedule-details-grid">
+                          <div className="schedule-item">
+                            <span className="detail-label">Request ID:</span>
+                            <span className="detail-value">#{currentTrip.request_id}</span>
+                          </div>
+                          <div className="schedule-item">
+                            <span className="detail-label">Schedule ID:</span>
+                            <span className="detail-value">#{currentTrip.schedule_id}</span>
+                          </div>
+                          {currentTrip.estimated_departure && (
+                            <div className="schedule-item">
+                              <span className="detail-label">Estimated Departure:</span>
+                              <span className="detail-value">{new Date(currentTrip.estimated_departure).toLocaleString()}</span>
+                            </div>
+                          )}
+                          {currentTrip.estimated_arrival && (
+                            <div className="schedule-item">
+                              <span className="detail-label">Estimated Arrival:</span>
+                              <span className="detail-value">{new Date(currentTrip.estimated_arrival).toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="trip-status-message">
+                      {!currentTrip.request_status && (
+                        <div className="status-alert pending">
+                          <FaClock className="alert-icon" />
+                          <p>Your request is pending admin approval. You'll be notified once it's processed.</p>
+                        </div>
+                      )}
+                      {currentTrip.request_status && (currentTrip.trip_status === 'booked' || !currentTrip.trip_status) && (
+                        <div className="status-alert booked">
+                          <FaTicketAlt className="alert-icon" />
+                          <p>Your trip is confirmed and scheduled. Wait for the driver to start the route.</p>
+                        </div>
+                      )}
+                      {currentTrip.trip_status === 'ongoing' && (
+                        <div className="status-alert ongoing">
+                          <FaRoute className="alert-icon" />
+                          <p>Your trip is currently in progress. The driver is on route to pick you up.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="booking-note">
-                  <p>Our intelligent system will automatically find the best bus and optimal route for your journey.</p>
-                </div>
-                <button type="submit" className="submit-btn">
-                  <FaBus className="btn-icon" />
-                  Submit Booking Request
-                </button>
-              </form>
+              ) : (
+                // Booking Form
+                <form className="booking-form" onSubmit={handleBookingSubmit}>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="pickup-location" className="form-label">Pickup Location</label>
+                      <select 
+                        id="pickup-location" 
+                        className="form-select" 
+                        value={bookingForm.pickup_id}
+                        onChange={(e) => setBookingForm({...bookingForm, pickup_id: e.target.value})}
+                        required
+                      >
+                        <option value="">Select pickup location...</option>
+                        {pickupLocations.map(location => (
+                          <option key={location.pickup_id} value={location.pickup_id}>
+                            {location.name} ({location.type})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="destination" className="form-label">Destination</label>
+                      <select 
+                        id="destination" 
+                        className="form-select"
+                        value={bookingForm.location_id}
+                        onChange={(e) => setBookingForm({...bookingForm, location_id: e.target.value})}
+                        required
+                      >
+                        <option value="">Select destination...</option>
+                        {destinations.map(destination => (
+                          <option key={destination.location_id} value={destination.location_id}>
+                            {destination.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="booking-note">
+                    <p>Our intelligent system will automatically find the best bus and optimal route for your journey.</p>
+                  </div>
+                  <button type="submit" className="submit-btn">
+                    <FaBus className="btn-icon" />
+                    Submit Booking Request
+                  </button>
+                </form>
+              )}
             </div>
           </div>
 

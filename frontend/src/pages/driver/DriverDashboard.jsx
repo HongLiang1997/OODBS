@@ -873,7 +873,7 @@ export default function DriverDashboard() {
         await fetchDriverSchedules();
         
         // Show success message
-        alert('Trip completed successfully! 🎉\n\nThe route has been cleared and your status is now inactive.');
+        alert('Trip completed successfully! 🎉\n\nAll passengers have been marked as completed.\nThe route has been cleared and your status is now inactive.');
         
       } else {
         const errorData = await response.json();
@@ -892,11 +892,35 @@ export default function DriverDashboard() {
       return;
     }
 
+    // Guard: don't allow starting a schedule that's already completed
+    if (selectedSchedule && selectedSchedule.status === 'completed') {
+      alert(`Schedule #${selectedSchedule.schedule_id} is already completed and cannot be started.`);
+      return;
+    }
+
     try {
       console.log('Setting driver status to On-Route and updating schedule status to ongoing');
       
       // Update driver status to on-route
       await updateDriverStatus('On-Route');
+      
+      // Start the trip - this will set all passenger trip_status from 'booked' to 'ongoing'
+      console.log('Starting trip - updating passenger trip statuses from booked to ongoing');
+      const startTripResponse = await fetch(`http://localhost:5000/driver/schedule/start/${selectedSchedule.schedule_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!startTripResponse.ok) {
+        console.error('Failed to start trip:', startTripResponse.status);
+        const errorText = await startTripResponse.text();
+        alert(`Warning: Could not update passenger trip status: ${errorText}`);
+      } else {
+        const startTripResult = await startTripResponse.json();
+        console.log(`✅ Trip started: ${startTripResult.passengers_ongoing} passengers marked as ongoing`);
+      }
       
       // Update schedule status to 'ongoing'
       console.log('Sending request to update schedule status:', {
@@ -923,7 +947,7 @@ export default function DriverDashboard() {
         await fetchDriverSchedules();
         
         // Show success message
-        alert(`Driver status set to On-Route! 🚌\n\nSchedule #${selectedSchedule.schedule_id} is now ongoing.`);
+        alert(`Driver status set to On-Route! 🚌\n\nSchedule #${selectedSchedule.schedule_id} is now ongoing.\nAll passengers are now ongoing.`);
         
       } else {
         const errorText = await response.text();
@@ -932,11 +956,11 @@ export default function DriverDashboard() {
         
         // More specific error message
         if (response.status === 404) {
-          alert(`Schedule #${selectedSchedule.schedule_id} not found. The driver status has been updated, but the schedule could not be found in the database.`);
+          alert(`Schedule #${selectedSchedule.schedule_id} not found. The driver status and trip have been started, but the schedule could not be found in the database.`);
         } else if (response.status === 500) {
-          alert(`Server error updating schedule status. The driver status has been updated, but there was a database error: ${errorText}`);
+          alert(`Server error updating schedule status. The driver status and trip have been started, but there was a database error: ${errorText}`);
         } else {
-          alert(`Failed to update schedule status (${response.status}). The driver status has been updated, but there was an issue with the schedule: ${errorText}`);
+          alert(`Failed to update schedule status (${response.status}). The driver status and trip have been started, but there was an issue with the schedule: ${errorText}`);
         }
       }
     } catch (error) {
@@ -1263,12 +1287,14 @@ export default function DriverDashboard() {
               <button 
                 className={`status-btn status-onroute ${driverStatus === 'on-route' ? 'active' : ''}`}
                 onClick={() => handleOnRouteStatus()}
-                disabled={!selectedSchedule || driverStatus === 'on-route'}
+                disabled={!selectedSchedule || driverStatus === 'on-route' || (selectedSchedule && selectedSchedule.status === 'completed')}
                 title={
                   driverStatus === 'on-route' 
                     ? 'Already on route - complete trip to change status'
                     : !selectedSchedule 
                     ? 'Select a schedule first' 
+                    : (selectedSchedule && selectedSchedule.status === 'completed')
+                    ? 'Cannot start a completed schedule'
                     : 'Set status to On-Route'
                 }
               >
@@ -1316,7 +1342,7 @@ export default function DriverDashboard() {
               </button>
               {selectedSchedule && (
                 <div className="trip-status-info">
-                  Active: Schedule #{selectedSchedule.schedule_id}
+                  Selected: Schedule #{selectedSchedule.schedule_id}
                 </div>
               )}
             </div>

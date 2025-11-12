@@ -78,6 +78,140 @@ router.get("/destinations", async (req, res) => {
   }
 });
 
+// GET /passenger/current-trip/:user_id - Get current trip status (booked or ongoing)
+router.get("/current-trip/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+  
+  try {
+    // Get current trip with booked or ongoing status (non-completed trips)
+    const [tripRows] = await pool.query(
+      `SELECT 
+         pr.request_id,
+         pr.user_id,
+         pr.passenger_count,
+         pr.request_status,
+         pr.trip_status,
+         pr.bus_id,
+         pr.schedule_id,
+         pl.name as pickup_name,
+         ol.name as destination_name,
+         b.plate_number,
+         b.company as bus_company,
+         u_driver.full_name as driver_name,
+         u_driver.phone_num as driver_phone,
+         s.departure_time as estimated_departure,
+         s.arrival_time as estimated_arrival,
+         s.status as schedule_status
+       FROM passenger_requests pr
+       LEFT JOIN pickup_location pl ON pr.pickup_id = pl.pickup_id
+       LEFT JOIN organization_locations ol ON pr.location_id = ol.location_id
+       LEFT JOIN bus b ON pr.bus_id = b.bus_id
+       LEFT JOIN users u_driver ON b.driver_id = u_driver.user_id
+       LEFT JOIN schedule s ON pr.schedule_id = s.schedule_id
+       WHERE pr.user_id = ? 
+         AND pr.request_status = 1 
+         AND (pr.trip_status IS NULL OR pr.trip_status != 'completed')
+       ORDER BY pr.request_id DESC
+       LIMIT 1`,
+      [user_id]
+    );
+
+    if (tripRows.length === 0) {
+      return res.json({ trip: null });
+    }
+
+    const trip = tripRows[0];
+    
+    // Get route information if available
+    let route = null;
+    if (trip.schedule_id) {
+      const [routeRows] = await pool.query(
+        `SELECT 
+           r.route_id,
+           r.stop_order,
+           r.eta,
+           r.request_id,
+           CASE 
+             WHEN r.stop_order = 1 THEN pl.name
+             ELSE ol.name 
+           END as stop_name,
+           CASE 
+             WHEN r.stop_order = 1 THEN 'pickup'
+             ELSE 'destination'
+           END as stop_type,
+           CASE 
+             WHEN r.stop_order = 1 THEN pl.latitude
+             ELSE ol.latitude 
+           END as latitude,
+           CASE 
+             WHEN r.stop_order = 1 THEN pl.longitude
+             ELSE ol.longitude 
+           END as longitude,
+           pr2.user_id as passenger_id,
+           u.full_name as passenger_name,
+           CASE WHEN pr2.user_id = ? THEN 1 ELSE 0 END as is_current_user
+         FROM routes r
+         LEFT JOIN passenger_requests pr2 ON r.request_id = pr2.request_id
+         LEFT JOIN pickup_location pl ON pr2.pickup_id = pl.pickup_id
+         LEFT JOIN organization_locations ol ON pr2.location_id = ol.location_id
+         LEFT JOIN users u ON pr2.user_id = u.user_id
+         WHERE r.schedule_id = ? AND pr2.request_status = 1
+         ORDER BY r.stop_order ASC, r.route_id ASC`,
+        [user_id, trip.schedule_id]
+      );
+      
+      // Get the current user's request ID
+      const [currentUserRequestRows] = await pool.query(
+        `SELECT request_id FROM passenger_requests WHERE user_id = ? AND schedule_id = ? AND request_status = 1`,
+        [user_id, trip.schedule_id]
+      );
+      const currentUserRequestId = currentUserRequestRows[0] ? currentUserRequestRows[0].request_id : null;
+      
+      // Post-process to correctly identify each passenger's destination
+      route = routeRows.map(stop => {
+        let isCurrentUserDestination = false;
+        
+        // Check if this route entry belongs to the current user and is their destination
+        if (stop.request_id === currentUserRequestId && stop.stop_type === 'destination') {
+          isCurrentUserDestination = true;
+        }
+        
+        console.log(`Stop processing:`, {
+          stop_order: stop.stop_order,
+          stop_name: stop.stop_name,
+          stop_type: stop.stop_type,
+          request_id: stop.request_id,
+          currentUserRequestId: currentUserRequestId,
+          is_current_user: stop.is_current_user,
+          isCurrentUserDestination: isCurrentUserDestination
+        });
+        
+        return {
+          ...stop,
+          is_current_user_destination: isCurrentUserDestination
+        };
+      });
+    }
+
+    console.log(`Found current trip for user ${user_id}:`, {
+      request_id: trip.request_id,
+      trip_status: trip.trip_status,
+      request_status: trip.request_status
+    });
+
+    res.json({
+      trip: {
+        ...trip,
+        route: route
+      }
+    });
+
+  } catch (err) {
+    console.error("Error fetching current trip:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /passenger/requests/:user_id - Get passenger requests by user ID
 router.get("/requests/:user_id", async (req, res) => {
   const { user_id } = req.params;

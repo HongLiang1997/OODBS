@@ -187,15 +187,17 @@ router.put("/schedule/complete/:schedule_id", async (req, res) => {
       return res.status(404).json({ error: "Schedule not found" });
     }
 
-    // Also mark all associated passenger requests as completed
+    // Mark all passenger trips in this schedule as completed
+    // Keep request_status unchanged (0=pending, 1=approved)
+    // Update trip_status to 'completed' to allow new bookings
     const [requestResult] = await pool.query(`
       UPDATE passenger_requests 
-      SET request_status = 0
-      WHERE schedule_id = ? AND request_status = 1
+      SET trip_status = 'completed'
+      WHERE schedule_id = ? AND trip_status IN ('booked', 'ongoing')
     `, [schedule_id]);
     
     // Log the completion
-    console.log(`Schedule ${schedule_id} marked as completed. Updated ${requestResult.affectedRows} passenger requests.`);
+    console.log(`Schedule ${schedule_id} marked as completed. ${requestResult.affectedRows} passenger trips marked as completed.`);
     
     res.json({ 
       message: "Schedule completed successfully", 
@@ -204,6 +206,46 @@ router.put("/schedule/complete/:schedule_id", async (req, res) => {
     });
   } catch (err) {
     console.error('Error completing schedule:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT start a trip (mark passenger trips as in_progress)
+router.put("/schedule/start/:schedule_id", async (req, res) => {
+  const { schedule_id } = req.params;
+  
+  try {
+    // Verify schedule exists and is not already completed
+    const [schedules] = await pool.query(`
+      SELECT status FROM schedule WHERE schedule_id = ?
+    `, [schedule_id]);
+
+    if (schedules.length === 0) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+
+    const scheduleStatus = schedules[0].status;
+    if (scheduleStatus === 'completed') {
+      return res.status(400).json({ error: 'Cannot start a completed schedule' });
+    }
+
+    // Mark all passenger trips as ongoing when bus starts
+    const [result] = await pool.query(`
+      UPDATE passenger_requests 
+      SET trip_status = 'ongoing'
+      WHERE schedule_id = ? AND trip_status = 'booked'
+    `, [schedule_id]);
+
+    console.log(`Schedule ${schedule_id} started. ${result.affectedRows} passenger trips marked as ongoing.`);
+
+    res.json({ 
+      message: "Trip started successfully", 
+      schedule_id: schedule_id,
+      passengers_ongoing: result.affectedRows
+    });
+    
+  } catch (err) {
+    console.error('Error starting trip:', err);
     res.status(500).json({ error: err.message });
   }
 });

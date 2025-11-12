@@ -38,27 +38,26 @@ class PassengerRequestService {
         console.log(`🚌 Processing request for passenger ${passenger_id}`);
 
         try {
-            // STEP 0: Check if passenger already has an active request (that's not completed)
-            const [existingRequests] = await this.pool.execute(`
-                SELECT pr.request_id, pr.pickup_id, pr.location_id, pr.schedule_id,
-                       COALESCE(s.status, 'unknown') as schedule_status
+            // STEP 0: Check if passenger has any incomplete trips (blocking new bookings until completion)
+            const [activeTrips] = await this.pool.execute(`
+                SELECT pr.request_id, pr.pickup_id, pr.location_id, pr.schedule_id, 
+                       pr.request_status, pr.trip_status
                 FROM passenger_requests pr 
-                LEFT JOIN schedule s ON pr.schedule_id = s.schedule_id
-                WHERE pr.user_id = ? AND pr.request_status = 1
-                AND (s.status IS NULL OR s.status != 'completed')
+                WHERE pr.user_id = ? 
+                AND pr.trip_status IN ('booked', 'ongoing')
             `, [passenger_id]);
 
-            if (existingRequests.length > 0) {
-                const existing = existingRequests[0];
-                console.log(`⚠️ Passenger ${passenger_id} already has active request ${existing.request_id} (Schedule status: ${existing.schedule_status})`);
+            if (activeTrips.length > 0) {
+                const activeTrip = activeTrips[0];
+                console.log(`⚠️ Passenger ${passenger_id} has incomplete trip (Request ${activeTrip.request_id}, Trip status: ${activeTrip.trip_status})`);
                 
                 // Check if it's the exact same request
-                if (existing.pickup_id === pickup_location_id && existing.location_id === destination_id) {
+                if (activeTrip.pickup_id === pickup_location_id && activeTrip.location_id === destination_id) {
                     return this.createRejectionResponse('DUPLICATE_REQUEST', 
                         'You already have an active request for this route');
                 } else {
-                    return this.createRejectionResponse('ACTIVE_REQUEST_EXISTS', 
-                        'Please cancel your existing request before making a new one');
+                    return this.createRejectionResponse('ACTIVE_TRIP_EXISTS', 
+                        'Please complete your current trip before making a new booking');
                 }
             }
 
@@ -264,6 +263,7 @@ class PassengerRequestService {
                 WHERE bs.service_id = ?
             )
             AND pr.request_status = 1
+            AND pr.trip_status IN ('booked', 'ongoing')
             ORDER BY pr.user_id, pr.request_id DESC
         `;
 
@@ -434,12 +434,12 @@ class PassengerRequestService {
     async confirmPassengerAddition(bestBusAnalysis, passengerRequest) {
         const { bus, simulatedSchedule } = bestBusAnalysis;
         
-        // Insert into passenger_requests table
+        // Insert into passenger_requests table with trip_status
         const insertQuery = `
             INSERT INTO passenger_requests (
                 user_id, bus_id, pickup_id, location_id, 
-                passenger_count, request_status, schedule_id, tier_id
-            ) VALUES (?, ?, ?, ?, ?, 1, ?, 1)
+                passenger_count, request_status, schedule_id, tier_id, trip_status
+            ) VALUES (?, ?, ?, ?, ?, 1, ?, 1, 'booked')
         `;
 
         // Get or create a schedule_id for this service
@@ -493,7 +493,9 @@ class PassengerRequestService {
                 FROM passenger_requests pr
                 JOIN pickup_location pl ON pr.pickup_id = pl.pickup_id  
                 JOIN organization_locations ol ON pr.location_id = ol.location_id
-                WHERE pr.schedule_id = ? AND pr.request_status = 1
+                WHERE pr.schedule_id = ? 
+                AND pr.request_status = 1
+                AND pr.trip_status IN ('booked', 'ongoing')
                 ORDER BY pr.request_id
             `, [scheduleId]);
 
