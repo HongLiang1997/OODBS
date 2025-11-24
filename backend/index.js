@@ -74,7 +74,6 @@ app.listen(PORT, async () => {
   
   // Initialize Traffic Awareness Service
   try {
-    console.log('Initializing Traffic Awareness Service...');
     await trafficAwarenessService.initialize();
     console.log('Traffic Awareness Service ready');
   } catch (error) {

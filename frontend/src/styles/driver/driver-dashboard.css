@@ -316,17 +316,20 @@
   font-size: 0.8em;
 }
 
-.stop-info {
+.driver-dashboard .stop-info {
   flex: 1;
+  color: white;
 }
 
-.stop-label {
+.driver-dashboard .stop-label {
   font-size: 0.75em;
   opacity: 0.9;
+  color: white;
 }
 
-.stop-name {
+.driver-dashboard .stop-name {
   font-size: 1em;
+  color: white;
 }
 
 .stop-passenger {

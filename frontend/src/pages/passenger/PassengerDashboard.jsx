@@ -325,36 +325,33 @@ export default function PassengerDashboard() {
                           <h4><FaRoute className="section-icon" /> Route Stops</h4>
                           <div className="simple-stops-list">
                             {currentTrip.route.map((stop, index) => {
-                              const isCurrentUserPickup = stop.is_current_user && stop.stop_type === 'pickup';
-                              const isCurrentUserDestination = stop.is_current_user_destination === true || (stop.is_current_user && stop.stop_type === 'destination');
-                              const stopClasses = `simple-stop ${stop.is_current_user ? 'your-stop' : ''} ${isCurrentUserDestination ? 'your-destination' : ''}`;
-                              
-                              console.log('Stop data:', {
-                                index,
+                              // Filter out passenger data to prevent accidental rendering of "0" values
+                              const cleanStop = {
+                                route_id: stop.route_id,
+                                stop_order: stop.stop_order,
                                 stop_name: stop.stop_name,
                                 stop_type: stop.stop_type,
+                                eta: stop.eta,
+                                latitude: stop.latitude,
+                                longitude: stop.longitude,
+                                request_id: stop.request_id,
                                 is_current_user: stop.is_current_user,
-                                is_current_user_destination: stop.is_current_user_destination,
-                                isCurrentUserPickup,
-                                isCurrentUserDestination,
-                                stopClasses,
-                                request_destination_id: stop.request_destination_id,
-                                stop_destination_id: stop.stop_destination_id
-                              });
+                                is_current_user_destination: stop.is_current_user_destination
+                              };
+                              
+                              const isCurrentUserPickup = Boolean(cleanStop.is_current_user && cleanStop.stop_type === 'pickup');
+                              const isCurrentUserDestination = Boolean(cleanStop.is_current_user_destination === true || (cleanStop.is_current_user && cleanStop.stop_type === 'destination'));
+                              const stopClasses = `simple-stop ${cleanStop.is_current_user ? 'your-stop' : ''} ${isCurrentUserDestination ? 'your-destination' : ''}`;
                               
                               return (
-                                <div key={stop.route_id || index} className={stopClasses}>
-                                  <div className="stop-number">{stop.stop_order}</div>
+                                <div key={cleanStop.route_id || index} className={stopClasses}>
+                                  <div className="stop-number">{cleanStop.stop_order}</div>
                                   <div className="stop-content">
                                     <div className="stop-name">
-                                      <FaMapMarkerAlt className={stop.stop_type === 'pickup' ? 'pickup-icon' : 'destination-icon'} />
-                                      {stop.stop_name}
+                                      <FaMapMarkerAlt className={cleanStop.stop_type === 'pickup' ? 'pickup-icon' : 'destination-icon'} />
+                                      {cleanStop.stop_name || ''}
                                       {isCurrentUserPickup && <span className="you-tag">YOU</span>}
                                       {isCurrentUserDestination && <span className="destination-tag">YOUR DESTINATION</span>}
-                                    </div>
-                                    <div className="stop-info">
-                                      {stop.passenger_name && !stop.is_current_user && <span>for {stop.passenger_name}</span>}
-                                      {stop.eta && <span className="eta">ETA: {new Date(stop.eta).toLocaleTimeString()}</span>}
                                     </div>
                                   </div>
                                 </div>
@@ -436,16 +433,10 @@ export default function PassengerDashboard() {
                             <span className="detail-label">Schedule ID:</span>
                             <span className="detail-value">#{currentTrip.schedule_id}</span>
                           </div>
-                          {currentTrip.estimated_departure && (
+                          {currentTrip.route && currentTrip.route.length > 0 && currentTrip.route.find(stop => stop.is_current_user_destination)?.eta && (
                             <div className="schedule-item">
-                              <span className="detail-label">Estimated Departure:</span>
-                              <span className="detail-value">{new Date(currentTrip.estimated_departure).toLocaleString()}</span>
-                            </div>
-                          )}
-                          {currentTrip.estimated_arrival && (
-                            <div className="schedule-item">
-                              <span className="detail-label">Estimated Arrival:</span>
-                              <span className="detail-value">{new Date(currentTrip.estimated_arrival).toLocaleString()}</span>
+                              <span className="detail-label">Your ETA:</span>
+                              <span className="detail-value">{new Date(currentTrip.route.find(stop => stop.is_current_user_destination).eta).toLocaleString()}</span>
                             </div>
                           )}
                         </div>
@@ -776,10 +767,6 @@ export default function PassengerDashboard() {
                             <td>{new Date(requestDetails.schedule.departure_time).toLocaleString()}</td>
                           </tr>
                           <tr>
-                            <th>Arrival Time</th>
-                            <td>{new Date(requestDetails.schedule.arrival_time).toLocaleString()}</td>
-                          </tr>
-                          <tr>
                             <th>Service Date</th>
                             <td>{new Date(requestDetails.schedule.service_date).toLocaleDateString()}</td>
                           </tr>
@@ -822,7 +809,7 @@ export default function PassengerDashboard() {
                               <td className="stop-order">{route.stop_order}</td>
                               <td className="destination-name">{route.destination_name || 'N/A'}</td>
                               <td className="passenger-info">
-                                {route.passenger_name || 'N/A'} ({route.total_passenger_count || 0})
+                                ({route.total_passenger_count || 0} passengers)
                               </td>
                               <td className="tier-name">{route.tier_name || 'N/A'}</td>
                               <td className="eta-time">

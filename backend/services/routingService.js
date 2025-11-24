@@ -402,6 +402,115 @@ class RoutingService {
       };
     }
   }
+
+  /**
+   * High-level wrapper methods for passengerRequestService integration
+   */
+
+  /**
+   * Optimize route using Dijkstra's algorithm
+   * @param {Object} startLocation - Starting location {lat, lng}
+   * @param {Array} destinations - Array of destinations with location data
+   * @returns {Promise<Array>} Optimized destination sequence
+   */
+  async optimizeRouteWithDijkstra(startLocation, destinations) {
+    try {
+      console.log(`🧭 RoutingService: Running Dijkstra optimization for ${destinations.length} destinations`);
+      
+      const result = this.runDijkstra(startLocation, destinations);
+      
+      if (result.success && result.optimizedSequence) {
+        console.log(`✅ Dijkstra optimization successful: ${result.totalDistance.toFixed(2)}m total distance`);
+        return result.optimizedSequence;
+      } else {
+        console.log(`❌ Dijkstra optimization failed: ${result.error || 'Unknown error'}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Dijkstra optimization error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Optimize route using Bellman-Ford algorithm
+   * @param {Object} startLocation - Starting location {lat, lng}
+   * @param {Array} destinations - Array of destinations with location data
+   * @returns {Promise<Array>} Optimized destination sequence
+   */
+  async optimizeRouteWithBellmanFord(startLocation, destinations) {
+    try {
+      console.log(`🧭 RoutingService: Running Bellman-Ford optimization for ${destinations.length} destinations`);
+      
+      const result = this.runBellmanFord(startLocation, destinations);
+      
+      if (result.success && result.optimizedSequence) {
+        console.log(`✅ Bellman-Ford optimization successful: ${result.totalDistance.toFixed(2)}m total distance`);
+        return result.optimizedSequence;
+      } else {
+        console.log(`❌ Bellman-Ford optimization failed: ${result.error || 'Unknown error'}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Bellman-Ford optimization error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Find optimal route considering traffic (integrated with passenger request service)
+   * @param {number} pickupLocationId - Pickup location ID
+   * @param {number} destinationId - Destination ID
+   * @param {Array} availableRoutes - Available bus routes
+   * @returns {Promise<Object>} Optimal route with traffic considerations
+   */
+  async findOptimalRoute(pickupLocationId, destinationId, availableRoutes) {
+    try {
+      console.log(`🚌 RoutingService: Finding optimal route from ${pickupLocationId} to ${destinationId}`);
+      
+      if (!availableRoutes || availableRoutes.length === 0) {
+        return null;
+      }
+
+      // Sort routes by capacity and distance efficiency
+      const sortedRoutes = availableRoutes.sort((a, b) => {
+        const aCapacityScore = (b.max_capacity - a.current_capacity) / b.max_capacity;
+        const bCapacityScore = (a.max_capacity - b.current_capacity) / a.max_capacity;
+        
+        // Prefer routes with more available capacity and shorter distances
+        if (aCapacityScore !== bCapacityScore) {
+          return bCapacityScore - aCapacityScore;
+        }
+        
+        // If capacity is similar, prefer shorter pickup-to-destination distance
+        const aDistance = Math.abs(a.dest_order - a.pickup_order);
+        const bDistance = Math.abs(b.dest_order - b.pickup_order);
+        return aDistance - bDistance;
+      });
+
+      const optimalRoute = sortedRoutes[0];
+      
+      console.log(`✅ Selected optimal route: Bus ${optimalRoute.bus_id} (${optimalRoute.bus_plate_number})`);
+      console.log(`   Capacity: ${optimalRoute.current_capacity}/${optimalRoute.max_capacity}`);
+      console.log(`   Route distance: ${Math.abs(optimalRoute.dest_order - optimalRoute.pickup_order)} stops`);
+      
+      return {
+        bus_id: optimalRoute.bus_id,
+        bus_plate_number: optimalRoute.bus_plate_number,
+        route_name: optimalRoute.route_name,
+        current_capacity: optimalRoute.current_capacity,
+        max_capacity: optimalRoute.max_capacity,
+        pickup_order: optimalRoute.pickup_order,
+        dest_order: optimalRoute.dest_order,
+        optimization_used: 'capacity_and_distance',
+        route_efficiency: Math.max(0, 100 - Math.abs(optimalRoute.dest_order - optimalRoute.pickup_order) * 10)
+      };
+      
+    } catch (error) {
+      console.error('❌ Route optimization error:', error);
+      return null;
+    }
+  }
 }
 
-module.exports = RoutingService;
+module.exports = { RoutingService };

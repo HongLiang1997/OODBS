@@ -28,7 +28,10 @@ class TrafficAwarenessService {
      * Initialize the service with traffic data
      */
     async initialize() {
-        if (this.isInitialized) return;
+        if (this.isInitialized) {
+            console.log('Traffic Awareness Service already initialized, skipping...');
+            return;
+        }
         
         try {
             console.log('Initializing Traffic Awareness Service...');
@@ -489,6 +492,110 @@ class TrafficAwarenessService {
             riskThresholds: this.riskThresholds,
             lastUpdated: new Date().toISOString()
         };
+    }
+
+    /**
+     * Analyze route sequence for traffic impact
+     * Wrapper method for analyzeRouteImpact that handles routeSequence format
+     * @param {Array} routeSequence - Array of route stops with locations
+     * @returns {Object} Traffic analysis results
+     */
+    async analyzeRoute(routeSequence) {
+        if (!routeSequence || routeSequence.length === 0) {
+            return {
+                overallRisk: 'LOW',
+                totalDelay: 0,
+                segments: [],
+                averageRisk: 'LOW'
+            };
+        }
+
+        console.log(`🚦 Analyzing traffic for route with ${routeSequence.length} stops`);
+
+        try {
+            // For single passenger or first request, provide minimal analysis
+            if (routeSequence.length < 2) {
+                console.log(`   ⚠️ Insufficient stops for traffic analysis, using defaults`);
+                return {
+                    overallRisk: 'LOW',
+                    totalDelay: 5, // Minimal default delay
+                    segments: [],
+                    averageRisk: 'LOW',
+                    detailMessage: 'Insufficient route data for traffic analysis'
+                };
+            }
+
+            // Extract pickup and destination from route sequence
+            const pickupStop = routeSequence.find(stop => stop.type === 'pickup');
+            const destinationStops = routeSequence.filter(stop => stop.type === 'destination');
+
+            if (!pickupStop || destinationStops.length === 0) {
+                console.log(`   ⚠️ Invalid route structure, using defaults`);
+                return {
+                    overallRisk: 'LOW',
+                    totalDelay: 5,
+                    segments: [],
+                    averageRisk: 'LOW',
+                    detailMessage: 'Invalid route structure for traffic analysis'
+                };
+            }
+
+            // Analyze traffic for pickup to first destination (main route segment)
+            const firstDestination = destinationStops[0];
+            const route = {
+                originLat: pickupStop.location.lat,
+                originLng: pickupStop.location.lng,
+                destLat: firstDestination.location.lat,
+                destLng: firstDestination.location.lng,
+                departureTime: new Date(), // Current time as default
+                dayType: 'WEEKDAY'
+            };
+
+            // Validate coordinates before analysis
+            if (!route.originLat || !route.originLng || !route.destLat || !route.destLng) {
+                console.log(`   ⚠️ Invalid coordinates, using default analysis`);
+                return {
+                    overallRisk: 'MEDIUM',
+                    totalDelay: 8,
+                    segments: [],
+                    averageRisk: 'MEDIUM',
+                    detailMessage: 'Invalid coordinates for traffic analysis'
+                };
+            }
+
+            // Use existing analyzeRouteImpact method with proper format
+            const analysis = this.analyzeRouteImpact(route);
+
+            // Map the response properties correctly
+            const overallRisk = analysis.riskLevel || 'LOW';
+            const totalDelay = analysis.expectedDelay || 5;
+
+            console.log(`   Traffic Analysis: ${overallRisk} risk, ${totalDelay}min delay`);
+            
+            return {
+                overallRisk: overallRisk,
+                totalDelay: totalDelay,
+                segments: analysis.trafficRoutes || [],
+                averageRisk: overallRisk,
+                detailMessage: `Route analysis: pickup to destination analyzed`,
+                riskLevel: analysis.riskLevel,
+                expectedDelay: analysis.expectedDelay,
+                peakFactor: analysis.peakFactor,
+                recommendations: analysis.recommendations
+            };
+
+        } catch (error) {
+            console.error('❌ Traffic route analysis failed:', error);
+            // Return safe defaults on error
+            return {
+                overallRisk: 'MEDIUM',
+                totalDelay: 10,
+                segments: [],
+                averageRisk: 'MEDIUM',
+                error: error.message,
+                detailMessage: 'Traffic analysis failed, using defaults'
+            };
+        }
     }
 }
 

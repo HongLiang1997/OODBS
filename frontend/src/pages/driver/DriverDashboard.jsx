@@ -1136,11 +1136,6 @@ export default function DriverDashboard() {
                   <div className="stop-info">
                     <div className="stop-label">Stop {stop.stop_order || (index + 1)}</div>
                     <div className="stop-name">{stop.location_name}</div>
-                    {stop.passenger_name && (
-                      <div className="stop-passenger">
-                        👤 {stop.passenger_name}
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}

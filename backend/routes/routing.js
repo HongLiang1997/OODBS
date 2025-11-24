@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const RoutingService = require("../services/routingService");
+const { RoutingService } = require("../services/routingService");
 
 let pool;
 

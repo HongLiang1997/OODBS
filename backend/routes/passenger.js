@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const RoutingService = require("../services/routingService");
+const { RoutingService } = require("../services/routingService");
 
 // Configuration is now managed by RoutingService
 let pool;
@@ -147,14 +147,11 @@ router.get("/current-trip/:user_id", async (req, res) => {
              WHEN r.stop_order = 1 THEN pl.longitude
              ELSE ol.longitude 
            END as longitude,
-           pr2.user_id as passenger_id,
-           u.full_name as passenger_name,
            CASE WHEN pr2.user_id = ? THEN 1 ELSE 0 END as is_current_user
          FROM routes r
          LEFT JOIN passenger_requests pr2 ON r.request_id = pr2.request_id
          LEFT JOIN pickup_location pl ON pr2.pickup_id = pl.pickup_id
          LEFT JOIN organization_locations ol ON pr2.location_id = ol.location_id
-         LEFT JOIN users u ON pr2.user_id = u.user_id
          WHERE r.schedule_id = ? AND pr2.request_status = 1
          ORDER BY r.stop_order ASC, r.route_id ASC`,
         [user_id, trip.schedule_id]

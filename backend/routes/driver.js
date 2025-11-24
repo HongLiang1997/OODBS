@@ -190,10 +190,23 @@ router.put("/schedule/complete/:schedule_id", async (req, res) => {
     // Mark all passenger trips in this schedule as completed
     // Keep request_status unchanged (0=pending, 1=approved)
     // Update trip_status to 'completed' to allow new bookings
+    
+    // First, let's see what passenger requests exist for this schedule
+    const [existingRequests] = await pool.query(`
+      SELECT request_id, user_id, trip_status, request_status 
+      FROM passenger_requests 
+      WHERE schedule_id = ?
+    `, [schedule_id]);
+    
+    console.log(`Found ${existingRequests.length} passenger requests for schedule ${schedule_id}:`);
+    existingRequests.forEach(req => {
+      console.log(`  Request ${req.request_id}: User ${req.user_id}, trip_status='${req.trip_status}', request_status=${req.request_status}`);
+    });
+    
     const [requestResult] = await pool.query(`
       UPDATE passenger_requests 
       SET trip_status = 'completed'
-      WHERE schedule_id = ? AND trip_status IN ('booked', 'ongoing')
+      WHERE schedule_id = ?
     `, [schedule_id]);
     
     // Log the completion

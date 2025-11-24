@@ -1,4 +1,5 @@
 const { trafficAwarenessService } = require('./trafficAwarenessService');
+const { RoutingService } = require('./routingService');
 
 /**
  * Passenger Request Processing Service
@@ -10,6 +11,7 @@ class PassengerRequestService {
     constructor(pool) {
         this.pool = pool;
         this.trafficService = trafficAwarenessService;
+        this.routingService = new RoutingService();
         
         // Configurable thresholds for request acceptance
         this.acceptanceThresholds = {
@@ -328,9 +330,17 @@ class PassengerRequestService {
             console.log(`   🎯 Destination ${i+1}: Passenger ${dest.passenger_id} → ${dest.location.lat}, ${dest.location.lng}`);
         });
 
-        // TODO: Implement actual routing optimization (Dijkstra, TSP, etc.)
-        // For now: Simple sequential order (can be improved later)
-        const optimizedDestinations = [...destinations];
+        // Use proven route optimization approach
+        let optimizedDestinations;
+        
+        // For route optimization, use the working nearest neighbor algorithm
+        console.log(`   🧭 Using proven nearest neighbor algorithm for ${destinations.length} destinations`);
+        optimizedDestinations = this.optimizeDestinationSequenceSimple(pickupLocation, destinations);
+        
+        if (!optimizedDestinations || optimizedDestinations.length === 0) {
+            console.log('   ⚠️ Route optimization failed, using original order');
+            optimizedDestinations = [...destinations];
+        }
 
         // Build final route sequence: Pickup + Optimized destinations
         const routeSequence = [];
@@ -389,17 +399,38 @@ class PassengerRequestService {
     async analyzeTrafficImpact(routingResult) {
         const { routeSequence } = routingResult;
         
-        if (routeSequence.length < 2) {
-            return { overallRisk: 'LOW', totalDelay: 0, segments: [] };
+        if (!routeSequence || routeSequence.length < 2) {
+            console.log('🚦 Insufficient route data for traffic analysis, using defaults');
+            return { 
+                overallRisk: 'LOW', 
+                totalDelay: 0, 
+                segments: [],
+                averageRisk: 'LOW',
+                detailMessage: 'No traffic analysis needed for single stop'
+            };
         }
 
-        // Simplified traffic analysis for now
-        return {
-            overallRisk: 'LOW',
-            totalDelay: 5,
-            segments: [],
-            averageRisk: 'LOW'
-        };
+        try {
+            // Initialize traffic service if not already done
+            await this.trafficService.initialize();
+            
+            // Use real traffic analysis
+            const trafficAnalysis = await this.trafficService.analyzeRoute(routeSequence);
+            
+            console.log(`🚦 Traffic Analysis: Risk ${trafficAnalysis.overallRisk}, Delay ${trafficAnalysis.totalDelay}min`);
+            
+            return trafficAnalysis;
+        } catch (error) {
+            console.error('⚠️ Traffic analysis failed, using fallback:', error);
+            // Fallback to simple analysis for robustness
+            return {
+                overallRisk: 'MEDIUM',
+                totalDelay: 5, // Conservative default delay
+                segments: [],
+                averageRisk: 'MEDIUM',
+                detailMessage: 'Traffic analysis failed, using fallback values'
+            };
+        }
     }
 
     /**
@@ -511,17 +542,63 @@ class PassengerRequestService {
             `, [scheduleId]);
             console.log(`   🗑️ Cleared ${deleteResult.affectedRows} existing route entries`);
 
-            // Step 4: Create optimized route entries for ALL passengers
-            const baseTime = new Date();
-            baseTime.setHours(8, 0, 0, 0);
+            // Step 4: Create optimized route entries for ALL passengers with TRAFFIC-AWARE ETA calculation
+            // Get traffic analysis from bestBusAnalysis for delay calculations
+            const trafficDelay = bestBusAnalysis?.trafficAnalysis?.totalDelay || 0;
+            const trafficRisk = bestBusAnalysis?.trafficAnalysis?.overallRisk || 'LOW';
+            console.log(`   🚦 Applying traffic analysis: ${trafficRisk} risk, ${trafficDelay}min total delay`);
+            
+            // Get service departure time from schedule
+            const [scheduleInfo] = await this.pool.execute(`
+                SELECT departure_time FROM schedule WHERE schedule_id = ?
+            `, [scheduleId]);
+            
+            // Fix timezone issue - use Singapore time (GMT+8)
+            let serviceTime;
+            if (scheduleInfo[0]?.departure_time) {
+                // Parse the database time and ensure it's treated as Singapore time
+                const dbTime = scheduleInfo[0].departure_time;
+                if (typeof dbTime === 'string') {
+                    // Parse as Singapore time by adding the timezone offset
+                    serviceTime = new Date(dbTime + '+08:00'); 
+                } else {
+                    serviceTime = new Date(dbTime.getTime() + (8 * 60 * 60 * 1000)); // Add 8 hours
+                }
+            } else {
+                const now = new Date();
+                serviceTime = new Date(now.getTime() + (8 * 60 * 60 * 1000)); // Singapore time
+            }
+            
             let routeInserts = 0;
+            let currentETA = new Date(serviceTime);
+            console.log(`     🕐 Service departure time (SGT): ${currentETA.toISOString().slice(0, 19)} (from DB: ${scheduleInfo[0]?.departure_time})`);
 
             for (let i = 0; i < optimizedRoute.length; i++) {
                 const stop = optimizedRoute[i];
                 
                 if (stop.type === 'destination') {
-                    const etaMinutes = (stop.stop_number - 1) * 10; // 10 minutes per stop
-                    const eta = new Date(baseTime.getTime() + etaMinutes * 60000);
+                    // Calculate travel time from pickup (for first destination) or previous destination
+                    const prevStop = optimizedRoute[i-1];
+                    const travelDistance = this.calculateDistance(
+                        prevStop.location.lat, prevStop.location.lng,
+                        stop.location.lat, stop.location.lng
+                    );
+                    
+                    // Calculate travel time using realistic Singapore driving benchmark
+                    // Benchmark: Tanah Merah Ferry to Vivo = ~24km in 24 minutes = 1 minute per km
+                    const baseTravelTime = Math.round(travelDistance * 1.0); // 1 min per km
+                    const bufferTime = 3; // 3 minutes for stop/traffic
+                    
+                    // TRAFFIC INTEGRATION: Add traffic delay proportionally based on distance
+                    const segmentTrafficDelay = trafficDelay > 0 ? 
+                        Math.round((travelDistance / 20) * trafficDelay) : 0; // Distribute delay proportional to distance
+                    
+                    const totalTravelTime = Math.max(8, baseTravelTime + bufferTime + segmentTrafficDelay);
+                    
+                    currentETA = new Date(currentETA.getTime() + totalTravelTime * 60000);
+                    
+                    // Format ETA for MySQL in Singapore timezone
+                    const etaForDB = currentETA.toISOString().slice(0, 19).replace('T', ' ');
                     
                     await this.pool.execute(`
                         INSERT INTO routes (schedule_id, request_id, tier_id, stop_order, eta) 
@@ -531,11 +608,11 @@ class PassengerRequestService {
                         stop.request_id, 
                         1, 
                         stop.stop_number, 
-                        eta.toISOString().slice(0, 19).replace('T', ' ')
+                        etaForDB
                     ]);
                     
                     routeInserts++;
-                    console.log(`     ✅ Stop ${stop.stop_number}: Request ${stop.request_id} (Passenger ${stop.passenger_id}) - ETA: ${eta.toISOString().slice(11, 19)}`);
+                    console.log(`     ✅ Stop ${stop.stop_number}: Request ${stop.request_id} (Passenger ${stop.passenger_id}) - ETA (SGT): ${currentETA.toISOString().slice(0, 19)} (Distance: ${travelDistance.toFixed(2)}km, Base: ${baseTravelTime}min + Buffer: ${bufferTime}min + Traffic: ${segmentTrafficDelay}min = Total: ${totalTravelTime}min)`);
                 }
             }
 
@@ -576,7 +653,19 @@ class PassengerRequestService {
         }));
 
         // Step 1: Optimize destination sequence using distance-based algorithm
-        const optimizedDestinations = this.optimizeDestinationSequence(pickupLocation, destinations);
+        let optimizedDestinations;
+        try {
+            optimizedDestinations = await this.optimizeDestinationSequence(pickupLocation, destinations);
+            
+            // Ensure we have a valid array
+            if (!Array.isArray(optimizedDestinations)) {
+                console.log(`   ⚠️ optimizeDestinationSequence returned non-array, using original order`);
+                optimizedDestinations = destinations;
+            }
+        } catch (error) {
+            console.error(`   ❌ Error in optimizeDestinationSequence:`, error);
+            optimizedDestinations = destinations;
+        }
 
         // Step 2: Build final route sequence
         const routeSequence = [];
@@ -590,15 +679,30 @@ class PassengerRequestService {
         });
 
         // Stops #2, #3, #4...: Optimized destinations
-        optimizedDestinations.forEach((dest, index) => {
-            routeSequence.push({
-                type: 'destination',
-                location: dest.location,
-                stop_number: index + 2,
-                request_id: dest.request_id,
-                passenger_id: dest.passenger_id
+        // Additional safety check to ensure optimizedDestinations is an array
+        if (Array.isArray(optimizedDestinations) && optimizedDestinations.length > 0) {
+            optimizedDestinations.forEach((dest, index) => {
+                routeSequence.push({
+                    type: 'destination',
+                    location: dest.location,
+                    stop_number: index + 2,
+                    request_id: dest.request_id,
+                    passenger_id: dest.passenger_id
+                });
             });
-        });
+        } else {
+            console.error(`   ❌ optimizedDestinations is not a valid array:`, typeof optimizedDestinations, optimizedDestinations);
+            // Fallback: use original destinations array
+            destinations.forEach((dest, index) => {
+                routeSequence.push({
+                    type: 'destination',
+                    location: dest.location,
+                    stop_number: index + 2,
+                    request_id: dest.request_id,
+                    passenger_id: dest.passenger_id
+                });
+            });
+        }
 
         console.log(`   📋 Route sequence: Pickup → ${optimizedDestinations.length} optimized stops`);
         
@@ -606,29 +710,77 @@ class PassengerRequestService {
     }
 
     /**
-     * Optimize destination sequence using nearest neighbor algorithm
-     * (Can be enhanced with more sophisticated algorithms like 2-opt, genetic algorithm, etc.)
+     * Optimize destination sequence using proven nearest neighbor algorithm
+     * Keep advanced algorithms as optional fallbacks, but use the working approach first
      */
-    optimizeDestinationSequence(startLocation, destinations) {
+    async optimizeDestinationSequence(startLocation, destinations) {
         if (destinations.length <= 1) {
             return destinations;
         }
 
-        console.log(`     🎯 Optimizing ${destinations.length} destinations from pickup point`);
+        console.log(`     🎯 Optimizing ${destinations.length} destinations using proven nearest neighbor algorithm`);
 
-        // Simple Nearest Neighbor Algorithm
+        try {
+            // Primary approach: Use the proven nearest neighbor algorithm
+            const optimized = this.optimizeDestinationSequenceSimple(startLocation, destinations);
+            
+            // Ensure we return an array
+            if (Array.isArray(optimized) && optimized.length > 0) {
+                console.log(`     ✅ Nearest neighbor optimization successful: ${optimized.length} destinations ordered`);
+                return optimized;
+            } else {
+                console.log(`     ⚠️ Nearest neighbor returned invalid result, using original order`);
+                return destinations;
+            }
+            
+        } catch (error) {
+            console.error('     ⚠️ Nearest neighbor optimization failed:', error);
+            
+            // Only fallback to advanced algorithms if simple method fails
+            if (destinations.length <= 5) {
+                console.log(`     🔄 Trying advanced Dijkstra algorithm as fallback...`);
+                try {
+                    const advanced = await this.routingService.optimizeRouteWithDijkstra(startLocation, destinations);
+                    if (Array.isArray(advanced) && advanced.length > 0) {
+                        return advanced;
+                    }
+                } catch (advancedError) {
+                    console.error('     ❌ Advanced algorithm also failed:', advancedError);
+                }
+            }
+            
+            // Final fallback: return original order
+            console.log(`     🔄 Using original destination order`);
+            return destinations;
+        }
+    }
+    
+    /**
+     * Proven nearest neighbor algorithm for route optimization
+     */
+    optimizeDestinationSequenceSimple(startLocation, destinations) {
+        if (destinations.length === 0) {
+            return [];
+        }
+        
+        if (destinations.length === 1) {
+            return destinations;
+        }
+
+        console.log(`       🔍 Running nearest neighbor for ${destinations.length} destinations`);
+
         const optimized = [];
         const remaining = [...destinations];
         let currentLocation = startLocation;
 
         while (remaining.length > 0) {
-            // Find nearest unvisited destination
             let nearestIndex = 0;
             let minDistance = this.calculateDistance(
                 currentLocation.lat, currentLocation.lng,
                 remaining[0].location.lat, remaining[0].location.lng
             );
 
+            // Find the nearest destination
             for (let i = 1; i < remaining.length; i++) {
                 const distance = this.calculateDistance(
                     currentLocation.lat, currentLocation.lng,
@@ -641,15 +793,15 @@ class PassengerRequestService {
                 }
             }
 
-            // Add nearest destination to optimized sequence
+            // Add the nearest destination to the optimized route
             const nearest = remaining.splice(nearestIndex, 1)[0];
             optimized.push(nearest);
             currentLocation = nearest.location;
 
-            console.log(`       ${optimized.length}. Passenger ${nearest.passenger_id} (${minDistance.toFixed(2)}km from previous)`);
+            console.log(`         ${optimized.length}. Passenger ${nearest.passenger_id} (${minDistance.toFixed(2)}km from previous)`);
         }
 
-        // Calculate total optimized distance
+        // Calculate and log total optimized distance
         let totalDistance = 0;
         let prevLocation = startLocation;
         for (const dest of optimized) {
@@ -660,8 +812,7 @@ class PassengerRequestService {
             prevLocation = dest.location;
         }
 
-        console.log(`     ✅ Optimized total distance: ${totalDistance.toFixed(2)}km`);
-
+        console.log(`       ✅ Nearest neighbor completed: ${totalDistance.toFixed(2)}km total distance`);
         return optimized;
     }
 
@@ -753,10 +904,40 @@ class PassengerRequestService {
 
         // No active schedule found or existing schedule is full, create a new one
         console.log(`   📅 Creating NEW schedule for service ${service_id}`);
+        
+        // Get the actual service date and time from bus_services table
+        const [serviceInfo] = await this.pool.execute(`
+            SELECT service_date, isAmShift, isPmShift 
+            FROM bus_services 
+            WHERE service_id = ?
+        `, [service_id]);
+        
+        let scheduledDepartureTime;
+        if (serviceInfo.length > 0) {
+            const serviceDate = new Date(serviceInfo[0].service_date);
+            // Set time based on shift - AM shift starts at 8:00, PM shift at 18:00
+            if (serviceInfo[0].isAmShift) {
+                serviceDate.setHours(8, 0, 0, 0); // 8:00 AM
+            } else if (serviceInfo[0].isPmShift) {
+                serviceDate.setHours(18, 0, 0, 0); // 6:00 PM
+            } else {
+                serviceDate.setHours(8, 0, 0, 0); // Default to 8:00 AM
+            }
+            scheduledDepartureTime = serviceDate;
+        } else {
+            // Fallback to current time if service info not found
+            scheduledDepartureTime = new Date();
+        }
+        
+        // Convert to Singapore time (GMT+8) for database storage
+        const singaporeTime = new Date(scheduledDepartureTime.getTime() + (8 * 60 * 60 * 1000));
+        const singaporeTimeString = singaporeTime.toISOString().slice(0, 19).replace('T', ' ');
+        console.log(`   🕐 Creating schedule with service date departure time: ${singaporeTimeString} (Service date: ${serviceInfo[0]?.service_date}, AM: ${serviceInfo[0]?.isAmShift}, PM: ${serviceInfo[0]?.isPmShift})`);
+        
         const [result] = await this.pool.execute(`
             INSERT INTO schedule (service_id, departure_time, arrival_time, status) 
-            VALUES (?, NOW(), DATE_ADD(NOW(), INTERVAL 2 HOUR), 'active')
-        `, [service_id]);
+            VALUES (?, ?, ?, 'active')
+        `, [service_id, singaporeTimeString, singaporeTimeString]);
 
         const newScheduleId = result.insertId;
         console.log(`   ✅ Created new schedule ${newScheduleId}`);
