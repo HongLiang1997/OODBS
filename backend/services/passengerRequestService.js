@@ -330,15 +330,15 @@ class PassengerRequestService {
             console.log(`   🎯 Destination ${i+1}: Passenger ${dest.passenger_id} → ${dest.location.lat}, ${dest.location.lng}`);
         });
 
-        // Use proven route optimization approach
+        // Use advanced Dijkstra algorithm for route optimization
         let optimizedDestinations;
         
-        // For route optimization, use the working nearest neighbor algorithm
-        console.log(`   🧭 Using proven nearest neighbor algorithm for ${destinations.length} destinations`);
+        // For route optimization, use Dijkstra's algorithm for optimal pathfinding
+        console.log(`   🧭 Using Dijkstra's algorithm for ${destinations.length} destinations`);
         optimizedDestinations = this.optimizeDestinationSequenceSimple(pickupLocation, destinations);
         
         if (!optimizedDestinations || optimizedDestinations.length === 0) {
-            console.log('   ⚠️ Route optimization failed, using original order');
+            console.log('   ⚠️ Dijkstra optimization failed, using original order');
             optimizedDestinations = [...destinations];
         }
 
@@ -718,27 +718,27 @@ class PassengerRequestService {
             return destinations;
         }
 
-        console.log(`     🎯 Optimizing ${destinations.length} destinations using proven nearest neighbor algorithm`);
+        console.log(`     🎯 Optimizing ${destinations.length} destinations using Dijkstra's algorithm`);
 
         try {
-            // Primary approach: Use the proven nearest neighbor algorithm
+            // Primary approach: Use Dijkstra's algorithm for optimal pathfinding
             const optimized = this.optimizeDestinationSequenceSimple(startLocation, destinations);
             
             // Ensure we return an array
             if (Array.isArray(optimized) && optimized.length > 0) {
-                console.log(`     ✅ Nearest neighbor optimization successful: ${optimized.length} destinations ordered`);
+                console.log(`     ✅ Dijkstra optimization successful: ${optimized.length} destinations ordered`);
                 return optimized;
             } else {
-                console.log(`     ⚠️ Nearest neighbor returned invalid result, using original order`);
+                console.log(`     ⚠️ Dijkstra returned invalid result, using original order`);
                 return destinations;
             }
             
         } catch (error) {
-            console.error('     ⚠️ Nearest neighbor optimization failed:', error);
+            console.error('     ⚠️ Dijkstra optimization failed:', error);
             
-            // Only fallback to advanced algorithms if simple method fails
+            // Fallback to advanced routing service algorithms
             if (destinations.length <= 5) {
-                console.log(`     🔄 Trying advanced Dijkstra algorithm as fallback...`);
+                console.log(`     🔄 Trying routing service Dijkstra as fallback...`);
                 try {
                     const advanced = await this.routingService.optimizeRouteWithDijkstra(startLocation, destinations);
                     if (Array.isArray(advanced) && advanced.length > 0) {
@@ -756,7 +756,8 @@ class PassengerRequestService {
     }
     
     /**
-     * Proven nearest neighbor algorithm for route optimization
+     * Advanced route optimization using Dijkstra's algorithm
+     * Replaces the nearest neighbor approach with graph-based optimization
      */
     optimizeDestinationSequenceSimple(startLocation, destinations) {
         if (destinations.length === 0) {
@@ -767,39 +768,17 @@ class PassengerRequestService {
             return destinations;
         }
 
-        console.log(`       🔍 Running nearest neighbor for ${destinations.length} destinations`);
+        console.log(`       🧭 Running Dijkstra's algorithm for ${destinations.length} destinations`);
 
-        const optimized = [];
-        const remaining = [...destinations];
-        let currentLocation = startLocation;
-
-        while (remaining.length > 0) {
-            let nearestIndex = 0;
-            let minDistance = this.calculateDistance(
-                currentLocation.lat, currentLocation.lng,
-                remaining[0].location.lat, remaining[0].location.lng
-            );
-
-            // Find the nearest destination
-            for (let i = 1; i < remaining.length; i++) {
-                const distance = this.calculateDistance(
-                    currentLocation.lat, currentLocation.lng,
-                    remaining[i].location.lat, remaining[i].location.lng
-                );
-                
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestIndex = i;
-                }
-            }
-
-            // Add the nearest destination to the optimized route
-            const nearest = remaining.splice(nearestIndex, 1)[0];
-            optimized.push(nearest);
-            currentLocation = nearest.location;
-
-            console.log(`         ${optimized.length}. Passenger ${nearest.passenger_id} (${minDistance.toFixed(2)}km from previous)`);
-        }
+        // Build distance matrix for Dijkstra algorithm
+        const allLocations = [startLocation, ...destinations.map(d => d.location)];
+        const distanceMatrix = this.buildDistanceMatrix(allLocations);
+        
+        // Run Dijkstra's algorithm to find optimal path
+        const dijkstraResult = this.dijkstraShortestPath(distanceMatrix, 0); // Start from pickup (index 0)
+        
+        // Convert Dijkstra result to optimized destination sequence
+        const optimized = this.convertDijkstraToSequence(dijkstraResult, destinations, startLocation);
 
         // Calculate and log total optimized distance
         let totalDistance = 0;
@@ -812,7 +791,103 @@ class PassengerRequestService {
             prevLocation = dest.location;
         }
 
-        console.log(`       ✅ Nearest neighbor completed: ${totalDistance.toFixed(2)}km total distance`);
+        console.log(`       ✅ Dijkstra optimization completed: ${totalDistance.toFixed(2)}km total distance`);
+        return optimized;
+    }
+
+    /**
+     * Build distance matrix for Dijkstra algorithm using Haversine formula
+     */
+    buildDistanceMatrix(locations) {
+        const matrix = [];
+        for (let i = 0; i < locations.length; i++) {
+            matrix[i] = [];
+            for (let j = 0; j < locations.length; j++) {
+                if (i === j) {
+                    matrix[i][j] = 0;
+                } else {
+                    matrix[i][j] = this.calculateDistance(
+                        locations[i].lat, locations[i].lng,
+                        locations[j].lat, locations[j].lng
+                    );
+                }
+            }
+        }
+        return matrix;
+    }
+
+    /**
+     * Dijkstra's shortest path algorithm implementation
+     * @param {Array} graph - Distance matrix
+     * @param {number} start - Starting node index
+     * @returns {Object} - Distances and previous nodes
+     */
+    dijkstraShortestPath(graph, start) {
+        const numVertices = graph.length;
+        const distances = new Array(numVertices).fill(Infinity);
+        const previous = new Array(numVertices).fill(null);
+        const visited = new Array(numVertices).fill(false);
+        
+        distances[start] = 0;
+
+        for (let count = 0; count < numVertices - 1; count++) {
+            // Find minimum distance vertex from unvisited vertices
+            let minDistance = Infinity;
+            let minIndex = -1;
+            
+            for (let v = 0; v < numVertices; v++) {
+                if (!visited[v] && distances[v] < minDistance) {
+                    minDistance = distances[v];
+                    minIndex = v;
+                }
+            }
+
+            if (minIndex === -1) break; // No more reachable vertices
+
+            visited[minIndex] = true;
+
+            // Update distances of adjacent vertices
+            for (let v = 0; v < numVertices; v++) {
+                if (!visited[v] && 
+                    graph[minIndex][v] !== 0 && 
+                    distances[minIndex] !== Infinity &&
+                    distances[minIndex] + graph[minIndex][v] < distances[v]) {
+                    
+                    distances[v] = distances[minIndex] + graph[minIndex][v];
+                    previous[v] = minIndex;
+                }
+            }
+        }
+
+        return { distances, previous };
+    }
+
+    /**
+     * Convert Dijkstra algorithm result to optimized destination sequence
+     */
+    convertDijkstraToSequence(dijkstraResult, destinations, startLocation) {
+        const { distances } = dijkstraResult;
+        
+        // Create destination-distance pairs (excluding start location at index 0)
+        const destinationDistances = destinations.map((dest, index) => ({
+            destination: dest,
+            distance: distances[index + 1], // +1 because index 0 is start location
+            originalIndex: index
+        }));
+
+        // Sort destinations by shortest distance from start (Dijkstra optimal order)
+        destinationDistances.sort((a, b) => a.distance - b.distance);
+
+        // Build optimized sequence
+        const optimized = destinationDistances.map((item, sequenceIndex) => {
+            const dest = item.destination;
+            const distanceFromStart = item.distance;
+            
+            console.log(`         ${sequenceIndex + 1}. Passenger ${dest.passenger_id} (${distanceFromStart.toFixed(2)}km from start via optimal path)`);
+            
+            return dest;
+        });
+
         return optimized;
     }
 

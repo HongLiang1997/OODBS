@@ -40,6 +40,7 @@ export default function DriverDashboard() {
   const [directionsService, setDirectionsService] = useState(null);
   const [directionsRenderer, setDirectionsRenderer] = useState(null);
   const [currentLocationMarker, setCurrentLocationMarker] = useState(null);
+  const [latestETAs, setLatestETAs] = useState({}); // Store latest ETA for each schedule
   const pendingScheduleRef = useRef(null);
   const mapContainer = useRef(null);
 
@@ -371,9 +372,29 @@ export default function DriverDashboard() {
       if (response.ok) {
         const data = await response.json();
         setSchedules(data);
+        
+        // Fetch latest ETA for each schedule
+        for (const schedule of data) {
+          fetchLatestETA(schedule.schedule_id);
+        }
       }
     } catch (error) {
       console.error('Error fetching schedules:', error);
+    }
+  };
+
+  const fetchLatestETA = async (scheduleId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/driver/schedule/latest-eta/${scheduleId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLatestETAs(prev => ({
+          ...prev,
+          [scheduleId]: data.latest_eta
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching latest ETA for schedule ${scheduleId}:`, error);
     }
   };
 
@@ -1117,9 +1138,15 @@ export default function DriverDashboard() {
               {/* Pickup Location */}
               {selectedRoute.pickupLocation && (
                 <div className="stop-item pickup-stop">
-                  <span className="stop-icon">P</span>
                   <div className="stop-info">
-                    <div className="stop-label">Pick-up Location</div>
+                    <div className="stop-time">
+                      {selectedSchedule?.departure_time ? new Date(selectedSchedule.departure_time).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      }) : 'TBA'}
+                    </div>
+                    <span className="stop-icon">P</span>
                     <div className="stop-name">{selectedRoute.pickupLocation.name}</div>
                   </div>
                 </div>
@@ -1130,11 +1157,17 @@ export default function DriverDashboard() {
                 .sort((a, b) => a.stop_order - b.stop_order)
                 .map((stop, index) => (
                 <div key={stop.stop_order || index} className="stop-item destination-stop">
-                  <span className="stop-icon">
-                    {stop.stop_order || (index + 1)}
-                  </span>
                   <div className="stop-info">
-                    <div className="stop-label">Stop {stop.stop_order || (index + 1)}</div>
+                    <div className="stop-time">
+                      {stop.eta ? new Date(stop.eta).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      }) : 'TBA'}
+                    </div>
+                    <span className="stop-icon">
+                      {stop.stop_order || (index + 1)}
+                    </span>
                     <div className="stop-name">{stop.location_name}</div>
                   </div>
                 </div>
@@ -1235,7 +1268,7 @@ export default function DriverDashboard() {
                       <div className="schedule-header">
                         <div className="schedule-time">
                           <span className="time-range">
-                            {formatTime(schedule.departure_time)} - {formatTime(schedule.arrival_time)}
+                            {formatTime(schedule.departure_time)} - {latestETAs[schedule.schedule_id] ? formatTime(latestETAs[schedule.schedule_id]) : formatTime(schedule.arrival_time)}
                           </span>
                           <span className="date-info">{formatDate(schedule.departure_time)}</span>
                         </div>

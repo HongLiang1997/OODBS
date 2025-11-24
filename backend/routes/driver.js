@@ -36,6 +36,40 @@ router.get("/info/:user_id", async (req, res) => {
   }
 });
 
+// GET latest ETA for a specific schedule
+router.get("/schedule/latest-eta/:schedule_id", async (req, res) => {
+  const { schedule_id } = req.params;
+  
+  try {
+    // Get the latest (maximum) ETA from routes for this schedule
+    const [result] = await pool.query(`
+      SELECT MAX(eta) as latest_eta
+      FROM routes 
+      WHERE schedule_id = ?
+    `, [schedule_id]);
+    
+    if (result.length === 0 || result[0].latest_eta === null) {
+      // If no routes found, fall back to original schedule arrival time
+      const [scheduleResult] = await pool.query(`
+        SELECT arrival_time as latest_eta 
+        FROM schedule 
+        WHERE schedule_id = ?
+      `, [schedule_id]);
+      
+      if (scheduleResult.length === 0) {
+        return res.status(404).json({ error: "Schedule not found" });
+      }
+      
+      return res.json({ latest_eta: scheduleResult[0].latest_eta });
+    }
+    
+    res.json({ latest_eta: result[0].latest_eta });
+  } catch (err) {
+    console.error('Error fetching latest ETA:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET driver schedules by user_id
 router.get("/schedules/:user_id", async (req, res) => {
   const { user_id } = req.params;
