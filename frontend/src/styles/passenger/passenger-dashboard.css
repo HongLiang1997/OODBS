@@ -1353,17 +1353,18 @@
   align-items: start;
 }
 
-/* Simple Route Stops Display - More Compact */
-.route-stops {
+/* Simple Route Stops Display - Passenger Dashboard Specific Styling */
+.passenger-dashboard .route-stops {
   background: #ffffff;
   border: 1px solid #e9ecef;
   border-radius: 6px;
   padding: 0.6rem;
 }
 
-.route-stops h4 {
+/* Ensure passenger dashboard styles don't conflict with driver dashboard */
+.passenger-dashboard .route-stops h4 {
   margin: 0 0 0.6rem 0;
-  color: #333;
+  color: #000000; /* Black text for passenger dashboard */
   font-size: 0.85rem;
   font-weight: 600;
   display: flex;
@@ -1371,14 +1372,14 @@
   gap: 0.3rem;
 }
 
-.simple-stops-list,
-.simple-route {
+.passenger-dashboard .simple-stops-list,
+.passenger-dashboard .simple-route {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-.simple-stop {
+.passenger-dashboard .simple-stop {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -1389,32 +1390,32 @@
   transition: all 0.2s ease;
 }
 
-.simple-stop.your-stop {
+.passenger-dashboard .simple-stop.your-stop {
   background: #e3f2fd;
   border-color: #1976d2;
 }
 
-/* Destination Stop Styling - Higher Specificity */
-.simple-stop.your-stop.your-destination {
+/* Destination Stop Styling - Passenger Dashboard Specific */
+.passenger-dashboard .simple-stop.your-stop.your-destination {
   background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%) !important;
   border: 2px solid #ff9800 !important;
   box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2) !important;
   transform: scale(1.02) !important;
 }
 
-.simple-stop:hover {
+.passenger-dashboard .simple-stop:hover {
   background: #e9ecef;
 }
 
-.simple-stop.your-stop:hover {
+.passenger-dashboard .simple-stop.your-stop:hover {
   background: #bbdefb;
 }
 
-.simple-stop.your-stop.your-destination:hover {
+.passenger-dashboard .simple-stop.your-stop.your-destination:hover {
   background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%) !important;
 }
 
-.stop-number {
+.passenger-dashboard .stop-number {
   background: #007bff;
   color: white;
   width: 24px;
@@ -1428,13 +1429,13 @@
   flex-shrink: 0;
 }
 
-.your-stop .stop-number {
+.passenger-dashboard .your-stop .stop-number {
   background: #1976d2;
   transform: scale(1.05);
 }
 
-/* Destination Stop Number - Higher Specificity */
-.your-stop.your-destination .stop-number {
+/* Destination Stop Number - Passenger Dashboard Specific */
+.passenger-dashboard .your-stop.your-destination .stop-number {
   background: #ff9800 !important;
   color: white !important;
   font-weight: 700 !important;
@@ -1442,11 +1443,20 @@
   transform: scale(1.1) !important;
 }
 
-.stop-content {
+.passenger-dashboard .stop-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+.passenger-dashboard .stop-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #000000; /* Black text for passenger dashboard */
+  font-size: 0.85rem;
 }
 
 .stop-name {
@@ -1454,21 +1464,21 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  color: #333;
+  color: #000000; /* Changed to black for passenger dashboard */
   font-size: 0.85rem;
 }
 
-.pickup-icon {
+.passenger-dashboard .pickup-icon {
   color: #28a745;
   font-size: 0.85rem;
 }
 
-.destination-icon {
+.passenger-dashboard .destination-icon {
   color: #dc3545;
   font-size: 0.85rem;
 }
 
-.you-tag {
+.passenger-dashboard .you-tag {
   background: #1976d2;
   color: white;
   padding: 0.1rem 0.4rem;
@@ -1479,7 +1489,7 @@
   margin-left: auto;
 }
 
-.destination-tag {
+.passenger-dashboard .destination-tag {
   background: #ff9800 !important;
   color: white !important;
   padding: 0.1rem 0.4rem !important;
@@ -1500,38 +1510,38 @@
   100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
 }
 
-.stop-info {
+.passenger-dashboard .stop-info {
   display: flex;
   gap: 0.8rem;
   font-size: 0.7rem;
-  color: #6c757d;
+  color: #333333; /* Black text for passenger dashboard */
 }
 
-.eta {
+.passenger-dashboard .eta {
   color: #007bff;
   font-weight: 500;
 }
 
 /* Fallback trip route - removed as it's now unified with simple stops */
 
-/* Bus Assignment and Schedule Info - Separated Styles */
-.bus-assignment {
+/* Bus Assignment and Schedule Info - Passenger Dashboard Specific */
+.passenger-dashboard .bus-assignment {
   background: #ffffff;
   border: 1px solid #e9ecef;
   padding: 0.8rem;
   border-radius: 6px;
 }
 
-.schedule-info {
+.passenger-dashboard .schedule-info {
   background: #ffffff;
   border: 1px solid #e9ecef;
   padding: 0.4rem;
   border-radius: 6px;
 }
 
-.bus-assignment h4 {
+.passenger-dashboard .bus-assignment h4 {
   margin: 0 0 0.6rem 0;
-  color: #333;
+  color: #000000; /* Black text for passenger dashboard */
   font-size: 0.85rem;
   font-weight: 600;
   display: flex;
@@ -1539,9 +1549,9 @@
   gap: 0.3rem;
 }
 
-.schedule-info h4 {
+.passenger-dashboard .schedule-info h4 {
   margin: 0 0 0.4rem 0;
-  color: #333;
+  color: #000000; /* Black text for passenger dashboard */
   font-size: 0.85rem;
   font-weight: 600;
   display: flex;
