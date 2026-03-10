@@ -67,22 +67,14 @@ router.post("/optimize", async (req, res) => {
 
     let results;
 
-    switch (algorithm) {
-      case 'dijkstra':
-        results = routingService.runDijkstra(pickupLocation, destinations);
-        break;
-      case 'bellman_ford':
-        results = routingService.runBellmanFord(pickupLocation, destinations);
-        break;
-      case 'comparison':
-      case 'both':
-        results = routingService.compareAlgorithms(pickupLocation, destinations);
-        break;
-      default:
-        return res.status(400).json({ 
-          error: "Invalid algorithm. Use 'dijkstra', 'bellman_ford', or 'comparison'" 
-        });
+    // Only Dijkstra algorithm is supported
+    if (algorithm !== 'dijkstra') {
+      return res.status(400).json({ 
+        error: "Invalid algorithm. Only 'dijkstra' is supported" 
+      });
     }
+
+    results = routingService.runDijkstra(pickupLocation, destinations);
 
     res.json({
       success: true,
@@ -110,16 +102,6 @@ router.get("/algorithms", (req, res) => {
         name: "dijkstra",
         description: "Dijkstra's shortest path algorithm",
         time_complexity: "O(V²)"
-      },
-      {
-        name: "bellman_ford", 
-        description: "Bellman-Ford algorithm for shortest paths",
-        time_complexity: "O(VE)"
-      },
-      {
-        name: "comparison",
-        description: "Run both algorithms and compare results",
-        time_complexity: "O(V²) + O(VE)"
       }
     ]
   });
@@ -176,17 +158,14 @@ router.post("/process-requests", async (req, res) => {
       });
     }
 
-    // Run the routing algorithm
-    let routingResults;
-    if (algorithm === 'dijkstra') {
-      routingResults = routingService.runDijkstra(pickupLocation, destinations);
-    } else if (algorithm === 'bellman_ford') {
-      routingResults = routingService.runBellmanFord(pickupLocation, destinations);
-    } else {
+    // Run Dijkstra routing algorithm (only supported algorithm)
+    if (algorithm !== 'dijkstra') {
       return res.status(400).json({ 
-        error: "Invalid algorithm. Use 'dijkstra' or 'bellman_ford'" 
+        error: "Invalid algorithm. Only 'dijkstra' is supported" 
       });
     }
+
+    const routingResults = routingService.runDijkstra(pickupLocation, destinations);
 
     // Update requests to approved status
     await pool.query(

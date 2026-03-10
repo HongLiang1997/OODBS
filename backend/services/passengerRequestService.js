@@ -67,7 +67,18 @@ class PassengerRequestService {
             const availableBuses = await this.findAvailableBuses(pickup_location_id, requested_pickup_time);
             
             if (availableBuses.length === 0) {
-                // Create pending request for admin review
+                // Check if there are buses for this pickup location without time constraint
+                const busesWithoutTimeConstraint = await this.findBusesWithoutTimeConstraint(pickup_location_id);
+                
+                if (busesWithoutTimeConstraint.length > 0) {
+                    // Buses exist but departure time is within 15 minutes
+                    console.log(`⚠️ Buses available but departure within 15-minute window. Available buses: ${busesWithoutTimeConstraint.length}`);
+                    return this.createRejectionResponse('TIME_CONSTRAINT_VIOLATION', 
+                        'Buses are available but departure time is within 15 minutes. Please book at least 15 minutes in advance.', 
+                        null, { available_buses_count: busesWithoutTimeConstraint.length });
+                }
+                
+                // No buses available for other reasons - create pending request for admin review
                 const pendingRequestId = await this.createPendingRequest(passengerRequest);
                 console.log(`   ✅ Created pending request ${pendingRequestId} with no bus assignment`);
                 
@@ -140,12 +151,46 @@ class PassengerRequestService {
     /**
      * Step 1: Find buses that can pickup from the specified location
      * FIXED: Check if schedule is completed and create new schedule if needed
+     * Added: 15-minute minimum booking window constraint
      */
     async findAvailableBuses(pickup_location_id, requested_time) {
         console.log(`=== FINDING OPTIMAL SCHEDULE ===`);
         console.log(`Pickup ID: ${pickup_location_id}, Requested time: ${requested_time}`);
         
-        // Updated query to check schedule completion status
+        // REDUCED to 5 minutes for testing - can be adjusted back to 15 for production
+        const now = new Date();
+        const minimumBookingTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now for testing
+        const minimumBookingTimeISO = minimumBookingTime.toISOString();
+        
+        console.log(`⏰ Minimum booking time constraint: ${minimumBookingTimeISO} (5 minutes from now - TESTING MODE)`);
+        
+        // First, let's check what buses exist without ANY time constraints for debugging
+        const debugQuery = `
+            SELECT DISTINCT 
+                b.bus_id, b.plate_number, b.capacity, b.status,
+                bs.service_id, bs.service_date, bs.pickup_id,
+                s.schedule_id, s.departure_time, s.arrival_time, s.status as schedule_status,
+                COUNT(pr.request_id) as current_passengers
+            FROM bus b
+            JOIN bus_services bs ON b.bus_id = bs.bus_id
+            LEFT JOIN schedule s ON bs.service_id = s.service_id
+            LEFT JOIN passenger_requests pr ON b.bus_id = pr.bus_id 
+                AND pr.request_status = 1
+            WHERE bs.pickup_id = ? 
+                AND b.status = 'active'
+            GROUP BY b.bus_id, bs.service_id, s.schedule_id
+            ORDER BY b.bus_id
+        `;
+        
+        console.log(`🔍 DEBUG: Checking ALL buses for pickup_id ${pickup_location_id} (no time constraints):`);
+        const [debugBuses] = await this.pool.execute(debugQuery, [pickup_location_id]);
+        debugBuses.forEach(bus => {
+            const dept = bus.departure_time ? new Date(bus.departure_time).toISOString() : 'NULL';
+            const status = bus.schedule_status || 'NULL';
+            console.log(`   🚌 Bus ${bus.bus_id} (${bus.plate_number}): ${bus.current_passengers}/${bus.capacity} passengers, Schedule Status: ${status}, Departure: ${dept}`);
+        });
+        
+        // Updated query to check schedule completion status and time constraints
         const query = `
             SELECT DISTINCT 
                 b.bus_id,
@@ -161,7 +206,7 @@ class PassengerRequestService {
                 s.departure_time,
                 s.arrival_time,
                 CASE 
-                    WHEN s.arrival_time IS NOT NULL AND s.arrival_time < NOW() THEN 'COMPLETED'
+                    WHEN s.arrival_time IS NOT NULL AND s.arrival_time < NOW() AND DATE(s.arrival_time) < CURDATE() THEN 'COMPLETED'
                     WHEN COUNT(pr.request_id) >= b.capacity THEN 'FULL'
                     ELSE 'AVAILABLE'
                 END as schedule_status
@@ -181,18 +226,98 @@ class PassengerRequestService {
         `;
 
         try {
+            // First test: Run the query without HAVING clause to see all results
+            const queryWithoutHaving = `
+                SELECT DISTINCT 
+                    b.bus_id,
+                    b.plate_number,
+                    b.capacity,
+                    b.status,
+                    bs.service_id,
+                    bs.service_date,
+                    bs.isAmShift,
+                    bs.isPmShift,
+                    COUNT(pr.request_id) as current_passengers,
+                    s.schedule_id,
+                    s.departure_time,
+                    s.arrival_time,
+                    CASE 
+                        WHEN s.arrival_time IS NOT NULL AND s.arrival_time < NOW() AND DATE(s.arrival_time) < CURDATE() THEN 'COMPLETED'
+                        WHEN COUNT(pr.request_id) >= b.capacity THEN 'FULL'
+                        ELSE 'AVAILABLE'
+                    END as schedule_status
+                FROM bus b
+                JOIN bus_services bs ON b.bus_id = bs.bus_id
+                LEFT JOIN schedule s ON bs.service_id = s.service_id
+                LEFT JOIN passenger_requests pr ON b.bus_id = pr.bus_id 
+                    AND pr.request_status = 1
+                WHERE bs.pickup_id = ? 
+                    AND b.status = 'active'
+                    AND (bs.service_date >= CURDATE() - INTERVAL 7 DAY OR bs.service_date IS NULL)
+                GROUP BY b.bus_id, bs.service_id, s.schedule_id
+                ORDER BY b.bus_id
+            `;
+            
+            console.log(`🔍 DEBUG: Running query WITHOUT HAVING clause:`);
+            const [allResults] = await this.pool.execute(queryWithoutHaving, [pickup_location_id]);
+            allResults.forEach(bus => {
+                console.log(`   📌 Bus ${bus.bus_id}: Status=${bus.schedule_status}, Passengers=${bus.current_passengers}/${bus.capacity}, Service_date=${bus.service_date}, Schedule_id=${bus.schedule_id}`);
+            });
+            
             const [buses] = await this.pool.execute(query, [pickup_location_id]);
-            console.log(`Found ${buses.length} candidate buses with available schedules`);
+            console.log(`Found ${buses.length} candidate buses with available schedules (NO TIME CONSTRAINT - TESTING MODE)`);
+            
+            if (buses.length === 0) {
+                console.log(`⚠️ No buses found even without time constraints`);
+                
+                // Show what was filtered out by the HAVING clause
+                console.log(`📊 HAVING CLAUSE FILTERING:`);
+                const availableBuses = allResults.filter(bus => 
+                    bus.schedule_status === 'AVAILABLE' || bus.schedule_status === null
+                );
+                console.log(`   Before HAVING: ${allResults.length} buses`);
+                console.log(`   After HAVING: ${availableBuses.length} buses`);
+                
+                allResults.forEach(bus => {
+                    const passesHaving = bus.schedule_status === 'AVAILABLE' || bus.schedule_status === null;
+                    console.log(`   ${passesHaving ? '✅' : '❌'} Bus ${bus.bus_id}: schedule_status='${bus.schedule_status}' ${passesHaving ? 'PASSES' : 'FILTERED OUT'}`);
+                });
+            }
             
             // Log bus details for debugging
             buses.forEach(bus => {
-                console.log(`   Bus ${bus.bus_id} (${bus.plate_number}): ${bus.current_passengers}/${bus.capacity} passengers, Status: ${bus.schedule_status || 'NEW'}`);
+                const departureTime = bus.departure_time ? new Date(bus.departure_time).toISOString() : 'No departure time';
+                console.log(`   Bus ${bus.bus_id} (${bus.plate_number}): ${bus.current_passengers}/${bus.capacity} passengers, Status: ${bus.schedule_status || 'NEW'}, Departure: ${departureTime}`);
             });
             
             return buses;
         } catch (error) {
             console.error('❌ Database query failed:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Helper method: Find buses without time constraint (for checking if time is the only issue)
+     */
+    async findBusesWithoutTimeConstraint(pickup_location_id) {
+        const query = `
+            SELECT DISTINCT b.bus_id
+            FROM bus b
+            JOIN bus_services bs ON b.bus_id = bs.bus_id
+            LEFT JOIN schedule s ON bs.service_id = s.service_id
+            WHERE bs.pickup_id = ? 
+                AND b.status = 'active'
+                AND (bs.service_date >= CURDATE() - INTERVAL 7 DAY OR bs.service_date IS NULL)
+                AND (s.arrival_time IS NULL OR s.arrival_time >= NOW())
+        `;
+
+        try {
+            const [buses] = await this.pool.execute(query, [pickup_location_id]);
+            return buses;
+        } catch (error) {
+            console.error('❌ Error checking buses without time constraint:', error);
+            return [];
         }
     }
 
@@ -1004,15 +1129,14 @@ class PassengerRequestService {
             scheduledDepartureTime = new Date();
         }
         
-        // Convert to Singapore time (GMT+8) for database storage
-        const singaporeTime = new Date(scheduledDepartureTime.getTime() + (8 * 60 * 60 * 1000));
-        const singaporeTimeString = singaporeTime.toISOString().slice(0, 19).replace('T', ' ');
-        console.log(`   🕐 Creating schedule with service date departure time: ${singaporeTimeString} (Service date: ${serviceInfo[0]?.service_date}, AM: ${serviceInfo[0]?.isAmShift}, PM: ${serviceInfo[0]?.isPmShift})`);
+        // Format for MySQL (no timezone conversion needed - database handles timezone)
+        const departureTimeString = scheduledDepartureTime.toISOString().slice(0, 19).replace('T', ' ');
+        console.log(`   🕐 Creating schedule with departure time: ${departureTimeString} (Service date: ${serviceInfo[0]?.service_date}, AM: ${serviceInfo[0]?.isAmShift}, PM: ${serviceInfo[0]?.isPmShift})`);
         
         const [result] = await this.pool.execute(`
             INSERT INTO schedule (service_id, departure_time, arrival_time, status) 
-            VALUES (?, ?, ?, 'active')
-        `, [service_id, singaporeTimeString, singaporeTimeString]);
+            VALUES (?, ?, NULL, 'active')
+        `, [service_id, departureTimeString]);
 
         const newScheduleId = result.insertId;
         console.log(`   ✅ Created new schedule ${newScheduleId}`);

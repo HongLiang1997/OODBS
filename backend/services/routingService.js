@@ -34,18 +34,18 @@ class RoutingService {
    * @returns {number} Distance in meters
    */
   haversineDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // Earth's radius in meters
-    const φ1 = lat1 * Math.PI / 180;
-    const φ2 = lat2 * Math.PI / 180;
-    const Δφ = (lat2 - lat1) * Math.PI / 180;
-    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const earthRadiusMeters = 6371000; // Earth's radius in meters
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    const deltaLatRad = (lat2 - lat1) * Math.PI / 180;
+    const deltaLonRad = (lon2 - lon1) * Math.PI / 180;
 
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const a = Math.sin(deltaLatRad/2) * Math.sin(deltaLatRad/2) +
+              Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+              Math.sin(deltaLonRad/2) * Math.sin(deltaLonRad/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-    return R * c; // Distance in meters
+    return earthRadiusMeters * c; // Distance in meters
   }
 
   /**
@@ -188,125 +188,7 @@ class RoutingService {
     };
   }
 
-  /**
-   * Bellman-Ford algorithm implementation
-   * @param {Array} graph - Distance matrix
-   * @param {number} start - Starting node index
-   * @returns {Array} - Shortest distances from start to all nodes or null if negative cycle exists
-   */
-  bellmanFord(graph, start) {
-    const n = graph.length;
-    const distances = new Array(n).fill(Infinity);
-    distances[start] = 0;
 
-    // Relax edges repeatedly
-    for (let i = 0; i < n - 1; i++) {
-      for (let u = 0; u < n; u++) {
-        for (let v = 0; v < n; v++) {
-          if (distances[u] !== Infinity && graph[u][v] !== Infinity) {
-            if (distances[u] + graph[u][v] < distances[v]) {
-              distances[v] = distances[u] + graph[u][v];
-            }
-          }
-        }
-      }
-    }
-
-    // Check for negative cycles
-    for (let u = 0; u < n; u++) {
-      for (let v = 0; v < n; v++) {
-        if (distances[u] !== Infinity && graph[u][v] !== Infinity) {
-          if (distances[u] + graph[u][v] < distances[v]) {
-            return null; // Negative cycle detected
-          }
-        }
-      }
-    }
-
-    return distances;
-  }
-
-  /**
-   * Execute Bellman-Ford algorithm for route optimization
-   * @param {Object} pickupLocation - Pickup location data
-   * @param {Array} destinations - Array of destination data
-   * @returns {Object} - Route optimization results
-   */
-  runBellmanFord(pickupLocation, destinations) {
-    const { locations, distanceMatrix, startIndex } = this.buildDistanceMatrix(pickupLocation, destinations);
-    const distances = this.bellmanFord(distanceMatrix, startIndex);
-    
-    if (!distances) {
-      return {
-        algorithm: 'bellman_ford',
-        success: false,
-        error: 'Negative cycle detected in distance matrix'
-      };
-    }
-    
-    // Create optimal route order based on shortest distances
-    const routeOrder = [];
-    const destinationDistances = [];
-    
-    // Get distances to all destinations (skip pickup location at index 0)
-    for (let i = 1; i < locations.length; i++) {
-      destinationDistances.push({
-        index: i,
-        location: locations[i],
-        distance: distances[i]
-      });
-    }
-    
-    // Sort destinations by distance
-    destinationDistances.sort((a, b) => a.distance - b.distance);
-    
-    let totalDistance = 0;
-    
-    // Build route order
-    for (let i = 0; i < destinationDistances.length; i++) {
-      const dest = destinationDistances[i];
-      routeOrder.push({
-        location: dest.location,
-        distance: dest.distance,
-        stopOrder: i + 1
-      });
-      totalDistance += dest.distance;
-    }
-
-    return {
-      algorithm: 'bellman_ford',
-      success: true,
-      pickupLocation,
-      routeOrder,
-      totalDistance,
-      totalStops: routeOrder.length,
-      summary: {
-        algorithm: 'Bellman-Ford (Shortest Path)',
-        totalDistance: `${(totalDistance / 1000).toFixed(2)} km`,
-        estimatedTime: `${Math.ceil(totalDistance / 500)} minutes` // Assume 30 km/h average speed
-      }
-    };
-  }
-
-  /**
-   * Compare both algorithms
-   * @param {Object} pickupLocation - Pickup location data
-   * @param {Array} destinations - Array of destination data
-   * @returns {Object} - Comparison results
-   */
-  compareAlgorithms(pickupLocation, destinations) {
-    const dijkstraResults = this.runDijkstra(pickupLocation, destinations);
-    const bellmanFordResults = this.runBellmanFord(pickupLocation, destinations);
-
-    return {
-      comparison: {
-        dijkstra: dijkstraResults,
-        bellman_ford: bellmanFordResults
-      },
-      recommendation: this.getRecommendation(dijkstraResults, bellmanFordResults),
-      timestamp: new Date().toISOString()
-    };
-  }
 
   /**
    * Get current routing configuration
@@ -364,44 +246,7 @@ class RoutingService {
     return Math.ceil(distanceMeters / this.config.METERS_PER_MINUTE);
   }
 
-  /**
-   * Get algorithm recommendation
-   * @param {Object} dijkstraResults - Dijkstra results
-   * @param {Object} bellmanFordResults - Bellman-Ford results
-   * @returns {Object} - Recommendation
-   */
-  getRecommendation(dijkstraResults, bellmanFordResults) {
-    // Simple heuristic: recommend based on success and performance
-    if (dijkstraResults.success && bellmanFordResults.success) {
-      // Compare total distances
-      if (dijkstraResults.totalDistance <= bellmanFordResults.totalDistance) {
-        return {
-          recommended: 'dijkstra',
-          reason: `Dijkstra found a shorter route (${(dijkstraResults.totalDistance / 1000).toFixed(2)} km vs ${(bellmanFordResults.totalDistance / 1000).toFixed(2)} km)`
-        };
-      } else {
-        return {
-          recommended: 'bellman_ford',
-          reason: `Bellman-Ford found a shorter route (${(bellmanFordResults.totalDistance / 1000).toFixed(2)} km vs ${(dijkstraResults.totalDistance / 1000).toFixed(2)} km)`
-        };
-      }
-    } else if (dijkstraResults.success) {
-      return {
-        recommended: 'dijkstra',
-        reason: 'Dijkstra succeeded while Bellman-Ford failed.'
-      };
-    } else if (bellmanFordResults.success) {
-      return {
-        recommended: 'bellman_ford',
-        reason: 'Bellman-Ford succeeded while Dijkstra failed.'
-      };
-    } else {
-      return {
-        recommended: 'none',
-        reason: 'Both algorithms failed to find optimal routes.'
-      };
-    }
-  }
+
 
   /**
    * High-level wrapper methods for passengerRequestService integration
@@ -432,30 +277,7 @@ class RoutingService {
     }
   }
 
-  /**
-   * Optimize route using Bellman-Ford algorithm
-   * @param {Object} startLocation - Starting location {lat, lng}
-   * @param {Array} destinations - Array of destinations with location data
-   * @returns {Promise<Array>} Optimized destination sequence
-   */
-  async optimizeRouteWithBellmanFord(startLocation, destinations) {
-    try {
-      console.log(`🧭 RoutingService: Running Bellman-Ford optimization for ${destinations.length} destinations`);
-      
-      const result = this.runBellmanFord(startLocation, destinations);
-      
-      if (result.success && result.optimizedSequence) {
-        console.log(`✅ Bellman-Ford optimization successful: ${result.totalDistance.toFixed(2)}m total distance`);
-        return result.optimizedSequence;
-      } else {
-        console.log(`❌ Bellman-Ford optimization failed: ${result.error || 'Unknown error'}`);
-        return null;
-      }
-    } catch (error) {
-      console.error('❌ Bellman-Ford optimization error:', error);
-      return null;
-    }
-  }
+
 
   /**
    * Find optimal route considering traffic (integrated with passenger request service)
