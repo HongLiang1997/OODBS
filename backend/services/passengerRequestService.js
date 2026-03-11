@@ -37,7 +37,7 @@ class PassengerRequestService {
             special_requirements = null
         } = passengerRequest;
 
-        console.log(`🚌 Processing request for passenger ${passenger_id}`);
+        console.log(`[BUS] Processing request for passenger ${passenger_id}`);
 
         try {
             // STEP 0: Check if passenger has any incomplete trips (blocking new bookings until completion)
@@ -51,7 +51,8 @@ class PassengerRequestService {
 
             if (activeTrips.length > 0) {
                 const activeTrip = activeTrips[0];
-                console.log(`⚠️ Passenger ${passenger_id} has incomplete trip (Request ${activeTrip.request_id}, Trip status: ${activeTrip.trip_status})`);
+                console.log(`[WARNING] Passenger ${passenger_id} has incomplete trip (Request ${activeTrip.request_id},
+                     Trip status: ${activeTrip.trip_status})`);
                 
                 // Check if it's the exact same request
                 if (activeTrip.pickup_id === pickup_location_id && activeTrip.location_id === destination_id) {
@@ -72,7 +73,7 @@ class PassengerRequestService {
                 
                 if (busesWithoutTimeConstraint.length > 0) {
                     // Buses exist but departure time is within 15 minutes
-                    console.log(`⚠️ Buses available but departure within 15-minute window. Available buses: ${busesWithoutTimeConstraint.length}`);
+                    console.log(`[WARNING] Buses available but departure within 15-minute window. Available buses: ${busesWithoutTimeConstraint.length}`);
                     return this.createRejectionResponse('TIME_CONSTRAINT_VIOLATION', 
                         'Buses are available but departure time is within 15 minutes. Please book at least 15 minutes in advance.', 
                         null, { available_buses_count: busesWithoutTimeConstraint.length });
@@ -80,7 +81,7 @@ class PassengerRequestService {
                 
                 // No buses available for other reasons - create pending request for admin review
                 const pendingRequestId = await this.createPendingRequest(passengerRequest);
-                console.log(`   ✅ Created pending request ${pendingRequestId} with no bus assignment`);
+                console.log(`   [SUCCESS] Created pending request ${pendingRequestId} with no bus assignment`);
                 
                 return this.createRejectionResponse('NO_AVAILABLE_BUS', 
                     'No buses available for your pickup location and time. Your request has been added to the pending queue for admin review.', 
@@ -91,7 +92,7 @@ class PassengerRequestService {
             const busAnalyses = [];
             
             for (const bus of availableBuses) {
-                console.log(`🔍 Analyzing bus ${bus.bus_id} (Service: ${bus.service_id})`);
+                console.log(`[ANALYZE] Analyzing bus ${bus.bus_id} (Service: ${bus.service_id})`);
                 
                 // Step 3: Simulate adding passenger to schedule
                 const simulatedSchedule = await this.simulatePassengerAddition(
@@ -130,7 +131,7 @@ class PassengerRequestService {
                 current.impactAssessment.efficiencyScore > best.impactAssessment.efficiencyScore ? current : best
             );
 
-            console.log(`🎯 SELECTED SINGLE BEST BUS: Bus ${bestBus.bus.bus_id} (${bestBus.bus.plate_number})`);
+            console.log(`[SELECTED] SELECTED SINGLE BEST BUS: Bus ${bestBus.bus.bus_id} (${bestBus.bus.plate_number})`);
             console.log(`   Efficiency Score: ${bestBus.impactAssessment.efficiencyScore}`);
             console.log(`   Expected Delay: ${bestBus.trafficAnalysis.totalDelay} minutes`);
             console.log(`   Analyzed ${busAnalyses.length} buses, ${acceptableBuses.length} acceptable, confirming with 1 bus only`);
@@ -138,12 +139,12 @@ class PassengerRequestService {
             // Step 9: Confirm the schedule with ONLY the selected best bus
             const confirmedSchedule = await this.confirmPassengerAddition(bestBus, passengerRequest);
 
-            console.log(`✅ CONFIRMED booking with Bus ${bestBus.bus.bus_id} only - no other buses modified`);
+            console.log(`[SUCCESS] CONFIRMED booking with Bus ${bestBus.bus.bus_id} only - no other buses modified`);
 
             return this.createConfirmationResponse(confirmedSchedule, bestBus);
 
         } catch (error) {
-            console.error('❌ Error processing passenger request:', error);
+            console.error('[ERROR] Error processing passenger request:', error);
             return this.createRejectionResponse('SYSTEM_ERROR', error.message);
         }
     }
@@ -162,7 +163,7 @@ class PassengerRequestService {
         const minimumBookingTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now for testing
         const minimumBookingTimeISO = minimumBookingTime.toISOString();
         
-        console.log(`⏰ Minimum booking time constraint: ${minimumBookingTimeISO} (5 minutes from now - TESTING MODE)`);
+        console.log(`[TIME] Minimum booking time constraint: ${minimumBookingTimeISO} (5 minutes from now - TESTING MODE)`);
         
         // First, let's check what buses exist without ANY time constraints for debugging
         const debugQuery = `
@@ -182,12 +183,12 @@ class PassengerRequestService {
             ORDER BY b.bus_id
         `;
         
-        console.log(`🔍 DEBUG: Checking ALL buses for pickup_id ${pickup_location_id} (no time constraints):`);
+        console.log(`[DEBUG] Checking ALL buses for pickup_id ${pickup_location_id} (no time constraints):`);
         const [debugBuses] = await this.pool.execute(debugQuery, [pickup_location_id]);
         debugBuses.forEach(bus => {
             const dept = bus.departure_time ? new Date(bus.departure_time).toISOString() : 'NULL';
             const status = bus.schedule_status || 'NULL';
-            console.log(`   🚌 Bus ${bus.bus_id} (${bus.plate_number}): ${bus.current_passengers}/${bus.capacity} passengers, Schedule Status: ${status}, Departure: ${dept}`);
+            console.log(`   [BUS] Bus ${bus.bus_id} (${bus.plate_number}): ${bus.current_passengers}/${bus.capacity} passengers, Schedule Status: ${status}, Departure: ${dept}`);
         });
         
         // Updated query to check schedule completion status and time constraints
@@ -258,20 +259,20 @@ class PassengerRequestService {
                 ORDER BY b.bus_id
             `;
             
-            console.log(`🔍 DEBUG: Running query WITHOUT HAVING clause:`);
+            console.log(`[DEBUG] Running query WITHOUT HAVING clause:`);
             const [allResults] = await this.pool.execute(queryWithoutHaving, [pickup_location_id]);
             allResults.forEach(bus => {
-                console.log(`   📌 Bus ${bus.bus_id}: Status=${bus.schedule_status}, Passengers=${bus.current_passengers}/${bus.capacity}, Service_date=${bus.service_date}, Schedule_id=${bus.schedule_id}`);
+                console.log(`   [BUS] Bus ${bus.bus_id}: Status=${bus.schedule_status}, Passengers=${bus.current_passengers}/${bus.capacity}, Service_date=${bus.service_date}, Schedule_id=${bus.schedule_id}`);
             });
             
             const [buses] = await this.pool.execute(query, [pickup_location_id]);
             console.log(`Found ${buses.length} candidate buses with available schedules (NO TIME CONSTRAINT - TESTING MODE)`);
             
             if (buses.length === 0) {
-                console.log(`⚠️ No buses found even without time constraints`);
+                console.log(`[WARNING] No buses found even without time constraints`);
                 
                 // Show what was filtered out by the HAVING clause
-                console.log(`📊 HAVING CLAUSE FILTERING:`);
+                console.log(`[FILTER] HAVING CLAUSE FILTERING:`);
                 const availableBuses = allResults.filter(bus => 
                     bus.schedule_status === 'AVAILABLE' || bus.schedule_status === null
                 );
@@ -280,7 +281,7 @@ class PassengerRequestService {
                 
                 allResults.forEach(bus => {
                     const passesHaving = bus.schedule_status === 'AVAILABLE' || bus.schedule_status === null;
-                    console.log(`   ${passesHaving ? '✅' : '❌'} Bus ${bus.bus_id}: schedule_status='${bus.schedule_status}' ${passesHaving ? 'PASSES' : 'FILTERED OUT'}`);
+                    console.log(`   ${passesHaving ? '[PASS]' : '[FAIL]'} Bus ${bus.bus_id}: schedule_status='${bus.schedule_status}' ${passesHaving ? 'PASSES' : 'FILTERED OUT'}`);
                 });
             }
             
@@ -292,7 +293,7 @@ class PassengerRequestService {
             
             return buses;
         } catch (error) {
-            console.error('❌ Database query failed:', error);
+            console.error('[ERROR] Database query failed:', error);
             throw error;
         }
     }
@@ -316,7 +317,7 @@ class PassengerRequestService {
             const [buses] = await this.pool.execute(query, [pickup_location_id]);
             return buses;
         } catch (error) {
-            console.error('❌ Error checking buses without time constraint:', error);
+            console.error('[ERROR] Error checking buses without time constraint:', error);
             return [];
         }
     }
@@ -407,7 +408,7 @@ class PassengerRequestService {
         
         const uniqueSchedule = Array.from(uniquePassengers.values());
         
-        console.log(`📋 getCurrentSchedule for service ${service_id}: Found ${uniqueSchedule.length} UNIQUE existing passengers (${schedule.length} total requests)`);
+        console.log(`[SCHEDULE] getCurrentSchedule for service ${service_id}: Found ${uniqueSchedule.length} UNIQUE existing passengers (${schedule.length} total requests)`);
         uniqueSchedule.forEach(p => {
             console.log(`   Request ${p.request_id}: User ${p.user_id} → ${p.dest_name}`);
         });
@@ -438,7 +439,7 @@ class PassengerRequestService {
             };
         }
 
-        console.log(`🧭 OPTIMIZING ROUTE for ${combined_schedule.length} passengers`);
+        console.log(`[ROUTE] OPTIMIZING ROUTE for ${combined_schedule.length} passengers`);
 
         // Get pickup location (same for all passengers)
         const pickupLocation = combined_schedule[0].pickup_coordinates;
@@ -450,16 +451,16 @@ class PassengerRequestService {
             passenger: passenger
         }));
 
-        console.log(`   📍 Pickup: ${pickupLocation.lat}, ${pickupLocation.lng}`);
+        console.log(`   [PICKUP] Pickup: ${pickupLocation.lat}, ${pickupLocation.lng}`);
         destinations.forEach((dest, i) => {
-            console.log(`   🎯 Destination ${i+1}: Passenger ${dest.passenger_id} → ${dest.location.lat}, ${dest.location.lng}`);
+            console.log(`   [DEST] Destination ${i+1}: Passenger ${dest.passenger_id} → ${dest.location.lat}, ${dest.location.lng}`);
         });
 
         // Use advanced Dijkstra algorithm for route optimization
         let optimizedDestinations;
         
         // For route optimization, use Dijkstra's algorithm for optimal pathfinding
-        console.log(`   🧭 Using Dijkstra's algorithm for ${destinations.length} destinations`);
+        console.log(`   [DIJKSTRA] Using Dijkstra's algorithm for ${destinations.length} destinations`);
         optimizedDestinations = this.optimizeDestinationSequenceSimple(pickupLocation, destinations);
         
         if (!optimizedDestinations || optimizedDestinations.length === 0) {
@@ -499,7 +500,7 @@ class PassengerRequestService {
             totalDistance += distance;
         }
 
-        console.log(`🚌 OPTIMIZED ROUTE: ${routeSequence.length} stops`);
+        console.log(`[ROUTE] OPTIMIZED ROUTE: ${routeSequence.length} stops`);
         routeSequence.forEach((stop) => {
             if (stop.type === 'pickup') {
                 console.log(`   Stop ${stop.stop_number}: Pickup (${stop.passengers_at_stop.length} passengers board)`);
@@ -525,7 +526,7 @@ class PassengerRequestService {
         const { routeSequence } = routingResult;
         
         if (!routeSequence || routeSequence.length < 2) {
-            console.log('🚦 Insufficient route data for traffic analysis, using defaults');
+            console.log('[TRAFFIC] Insufficient route data for traffic analysis, using defaults');
             return { 
                 overallRisk: 'LOW', 
                 totalDelay: 0, 
@@ -542,11 +543,12 @@ class PassengerRequestService {
             // Use real traffic analysis
             const trafficAnalysis = await this.trafficService.analyzeRoute(routeSequence);
             
-            console.log(`🚦 Traffic Analysis: Risk ${trafficAnalysis.overallRisk}, Delay ${trafficAnalysis.totalDelay}min`);
+            console.log(`[TRAFFIC] Traffic Analysis: Risk ${trafficAnalysis.overallRisk},
+                 Delay ${trafficAnalysis.totalDelay}min`);
             
             return trafficAnalysis;
         } catch (error) {
-            console.error('⚠️ Traffic analysis failed, using fallback:', error);
+            console.error('[WARNING] Traffic analysis failed, using fallback:', error);
             // Fallback to simple analysis for robustness
             return {
                 overallRisk: 'MEDIUM',
@@ -615,7 +617,7 @@ class PassengerRequestService {
         // FIXED: Insert only current passenger's route entries
         await this.createRouteEntries(requestId, scheduleId, bestBusAnalysis, passengerRequest.passenger_id);
 
-        console.log(`✅ CONFIRMED booking for passenger ${passengerRequest.passenger_id} with Bus ${bus.bus_id}`);
+        console.log(`[SUCCESS] CONFIRMED booking for passenger ${passengerRequest.passenger_id} with Bus ${bus.bus_id}`);
 
         return {
             request_id: requestId,
@@ -638,7 +640,7 @@ class PassengerRequestService {
             return;
         }
 
-        console.log(`🧭 OPTIMIZING ROUTES for schedule ${scheduleId} (new passenger ${current_passenger_id})`);
+        console.log(`[OPTIMIZE] OPTIMIZING ROUTES for schedule ${scheduleId} (new passenger ${current_passenger_id})`);
 
         try {
             // Step 1: Get ALL passengers in this schedule (including the new one)
@@ -655,23 +657,23 @@ class PassengerRequestService {
                 ORDER BY pr.request_id
             `, [scheduleId]);
 
-            console.log(`   👥 Found ${allPassengers.length} passengers in schedule ${scheduleId}`);
+            console.log(`   [PASSENGERS] Found ${allPassengers.length} passengers in schedule ${scheduleId}`);
 
             // Step 2: Rebuild optimized route for ALL passengers in this schedule
             const optimizedRoute = await this.calculateOptimalRoute(allPassengers);
-            console.log(`   🛣️ Calculated optimal route with ${optimizedRoute.length} stops`);
+            console.log(`   [ROUTE] Calculated optimal route with ${optimizedRoute.length} stops`);
 
             // Step 3: Clear ALL existing routes for this schedule (safe now since we're rebuilding)
             const [deleteResult] = await this.pool.execute(`
                 DELETE FROM routes WHERE schedule_id = ?
             `, [scheduleId]);
-            console.log(`   🗑️ Cleared ${deleteResult.affectedRows} existing route entries`);
+            console.log(`   [CLEAR] Cleared ${deleteResult.affectedRows} existing route entries`);
 
             // Step 4: Create optimized route entries for ALL passengers with TRAFFIC-AWARE ETA calculation
             // Get traffic analysis from bestBusAnalysis for delay calculations
             const trafficDelay = bestBusAnalysis?.trafficAnalysis?.totalDelay || 0;
             const trafficRisk = bestBusAnalysis?.trafficAnalysis?.overallRisk || 'LOW';
-            console.log(`   🚦 Applying traffic analysis: ${trafficRisk} risk, ${trafficDelay}min total delay`);
+            console.log(`   [TRAFFIC] Applying traffic analysis: ${trafficRisk} risk, ${trafficDelay}min total delay`);
             
             // Get service departure time from schedule
             const [scheduleInfo] = await this.pool.execute(`
@@ -696,7 +698,7 @@ class PassengerRequestService {
             
             let routeInserts = 0;
             let currentETA = new Date(serviceTime);
-            console.log(`     🕐 Service departure time (SGT): ${currentETA.toISOString().slice(0, 19)} (from DB: ${scheduleInfo[0]?.departure_time})`);
+            console.log(`     [TIME] Service departure time (SGT): ${currentETA.toISOString().slice(0, 19)} (from DB: ${scheduleInfo[0]?.departure_time})`);
 
             for (let i = 0; i < optimizedRoute.length; i++) {
                 const stop = optimizedRoute[i];
@@ -737,14 +739,14 @@ class PassengerRequestService {
                     ]);
                     
                     routeInserts++;
-                    console.log(`     ✅ Stop ${stop.stop_number}: Request ${stop.request_id} (Passenger ${stop.passenger_id}) - ETA (SGT): ${currentETA.toISOString().slice(0, 19)} (Distance: ${travelDistance.toFixed(2)}km, Base: ${baseTravelTime}min + Buffer: ${bufferTime}min + Traffic: ${segmentTrafficDelay}min = Total: ${totalTravelTime}min)`);
+                    console.log(`     [STOP] Stop ${stop.stop_number}: Request ${stop.request_id} (Passenger ${stop.passenger_id}) - ETA (SGT): ${currentETA.toISOString().slice(0, 19)} (Distance: ${travelDistance.toFixed(2)}km, Base: ${baseTravelTime}min + Buffer: ${bufferTime}min + Traffic: ${segmentTrafficDelay}min = Total: ${totalTravelTime}min)`);
                 }
             }
 
-            console.log(`   🎯 Created ${routeInserts} optimized route entries for schedule ${scheduleId}`);
+            console.log(`   [SUCCESS] Created ${routeInserts} optimized route entries for schedule ${scheduleId}`);
 
         } catch (error) {
-            console.error(`❌ Failed to optimize routes for schedule ${scheduleId}:`, error);
+            console.error(`[ERROR] Failed to optimize routes for schedule ${scheduleId}:`, error);
             throw error;
         }
     }
@@ -758,7 +760,7 @@ class PassengerRequestService {
             return [];
         }
 
-        console.log(`   🧮 Calculating optimal route for ${passengers.length} passengers`);
+        console.log(`   [CALC] Calculating optimal route for ${passengers.length} passengers`);
 
         // All passengers have same pickup location (stop #1)
         const pickupLocation = {
@@ -784,11 +786,11 @@ class PassengerRequestService {
             
             // Ensure we have a valid array
             if (!Array.isArray(optimizedDestinations)) {
-                console.log(`   ⚠️ optimizeDestinationSequence returned non-array, using original order`);
+                console.log(`   [WARNING] optimizeDestinationSequence returned non-array, using original order`);
                 optimizedDestinations = destinations;
             }
         } catch (error) {
-            console.error(`   ❌ Error in optimizeDestinationSequence:`, error);
+            console.error(`   [ERROR] Error in optimizeDestinationSequence:`, error);
             optimizedDestinations = destinations;
         }
 
@@ -816,7 +818,7 @@ class PassengerRequestService {
                 });
             });
         } else {
-            console.error(`   ❌ optimizedDestinations is not a valid array:`, typeof optimizedDestinations, optimizedDestinations);
+            console.error(`   [ERROR] optimizedDestinations is not a valid array:`, typeof optimizedDestinations, optimizedDestinations);
             // Fallback: use original destinations array
             destinations.forEach((dest, index) => {
                 routeSequence.push({
@@ -829,7 +831,7 @@ class PassengerRequestService {
             });
         }
 
-        console.log(`   📋 Route sequence: Pickup → ${optimizedDestinations.length} optimized stops`);
+        console.log(`   [SEQUENCE] Route sequence: Pickup → ${optimizedDestinations.length} optimized stops`);
         
         return routeSequence;
     }
@@ -838,53 +840,53 @@ class PassengerRequestService {
      * Optimize destination sequence using proven nearest neighbor algorithm
      * Keep advanced algorithms as optional fallbacks, but use the working approach first
      */
-    async optimizeDestinationSequence(startLocation, destinations) {
+    async optimizeDestinationSequence(pickupLocation, destinations) {
         if (destinations.length <= 1) {
             return destinations;
         }
 
-        console.log(`     🎯 Optimizing ${destinations.length} destinations using Dijkstra's algorithm`);
+        console.log(`     [OPTIMIZE] Optimizing ${destinations.length} destinations using Dijkstra's algorithm`);
 
         try {
             // Primary approach: Use Dijkstra's algorithm for optimal pathfinding
-            const optimized = this.optimizeDestinationSequenceSimple(startLocation, destinations);
+            const optimized = this.optimizeDestinationSequenceSimple(pickupLocation, destinations);
             
             // Ensure we return an array
             if (Array.isArray(optimized) && optimized.length > 0) {
-                console.log(`     ✅ Dijkstra optimization successful: ${optimized.length} destinations ordered`);
+                console.log(`     [SUCCESS] Dijkstra optimization successful: ${optimized.length} destinations ordered`);
                 return optimized;
             } else {
-                console.log(`     ⚠️ Dijkstra returned invalid result, using original order`);
+                console.log(`     [WARNING] Dijkstra returned invalid result, using original order`);
                 return destinations;
             }
             
         } catch (error) {
-            console.error('     ⚠️ Dijkstra optimization failed:', error);
+            console.error('     [WARNING] Dijkstra optimization failed:', error);
             
             // Fallback to advanced routing service algorithms
             if (destinations.length <= 5) {
-                console.log(`     🔄 Trying routing service Dijkstra as fallback...`);
+                console.log(`     [FALLBACK] Trying routing service Dijkstra as fallback...`);
                 try {
                     const advanced = await this.routingService.optimizeRouteWithDijkstra(startLocation, destinations);
                     if (Array.isArray(advanced) && advanced.length > 0) {
                         return advanced;
                     }
                 } catch (advancedError) {
-                    console.error('     ❌ Advanced algorithm also failed:', advancedError);
+                    console.error('     [ERROR] Advanced algorithm also failed:', advancedError);
                 }
             }
             
             // Final fallback: return original order
-            console.log(`     🔄 Using original destination order`);
+            console.log(`     [FALLBACK] Using original destination order`);
             return destinations;
         }
     }
     
     /**
-     * Advanced route optimization using Dijkstra's algorithm
-     * Replaces the nearest neighbor approach with graph-based optimization
+     * Proper iterative Dijkstra algorithm for route optimization
+     * Finds optimal sequential path through all destinations
      */
-    optimizeDestinationSequenceSimple(startLocation, destinations) {
+    optimizeDestinationSequenceSimple(pickupLocation, destinations) {
         if (destinations.length === 0) {
             return [];
         }
@@ -893,31 +895,50 @@ class PassengerRequestService {
             return destinations;
         }
 
-        console.log(`       🧭 Running Dijkstra's algorithm for ${destinations.length} destinations`);
+        console.log(`       [DIJKSTRA] Running iterative Dijkstra for ${destinations.length} destinations`);
 
-        // Build distance matrix for Dijkstra algorithm
-        const allLocations = [startLocation, ...destinations.map(d => d.location)];
-        const distanceMatrix = this.buildDistanceMatrix(allLocations);
-        
-        // Run Dijkstra's algorithm to find optimal path
-        const dijkstraResult = this.dijkstraShortestPath(distanceMatrix, 0); // Start from pickup (index 0)
-        
-        // Convert Dijkstra result to optimized destination sequence
-        const optimized = this.convertDijkstraToSequence(dijkstraResult, destinations, startLocation);
-
-        // Calculate and log total optimized distance
+        const optimizedSequence = [];
+        const unvisitedDestinations = [...destinations]; // Copy array
+        let currentLocation = pickupLocation; // Start at pickup, then moves to each destination
         let totalDistance = 0;
-        let prevLocation = startLocation;
-        for (const dest of optimized) {
-            totalDistance += this.calculateDistance(
-                prevLocation.lat, prevLocation.lng,
-                dest.location.lat, dest.location.lng
-            );
-            prevLocation = dest.location;
+
+        // Iteratively find closest unvisited destination using Dijkstra
+        while (unvisitedDestinations.length > 0) {
+            // Build distance matrix from current location to all unvisited destinations
+            const locations = [currentLocation, ...unvisitedDestinations.map(d => d.location)];
+            const distanceMatrix = this.buildDistanceMatrix(locations);
+            
+            // Run Dijkstra from current location (index 0)
+            const dijkstraResult = this.dijkstraShortestPath(distanceMatrix, 0);
+            
+            // Find closest unvisited destination
+            let minDistance = Infinity;
+            let closestIndex = -1;
+            
+            for (let i = 1; i < dijkstraResult.distances.length; i++) { // Skip index 0 (current location)
+                if (dijkstraResult.distances[i] < minDistance) {
+                    minDistance = dijkstraResult.distances[i];
+                    closestIndex = i - 1; // Adjust for destinations array index
+                }
+            }
+            
+            if (closestIndex === -1) break; // Safety check
+            
+            // Move to closest destination
+            const nextDestination = unvisitedDestinations[closestIndex];
+            optimizedSequence.push(nextDestination);
+            totalDistance += minDistance;
+            
+            console.log(`         ${optimizedSequence.length}. Passenger ${nextDestination.passenger_id} 
+                (${minDistance.toFixed(2)}km from previous stop)`);
+            
+            // Update current location and remove visited destination
+            currentLocation = nextDestination.location;
+            unvisitedDestinations.splice(closestIndex, 1);
         }
 
-        console.log(`       ✅ Dijkstra optimization completed: ${totalDistance.toFixed(2)}km total distance`);
-        return optimized;
+        console.log(`       [SUCCESS] Iterative Dijkstra completed: ${totalDistance.toFixed(2)}km total distance`);
+        return optimizedSequence;
     }
 
     /**
@@ -988,35 +1009,6 @@ class PassengerRequestService {
     }
 
     /**
-     * Convert Dijkstra algorithm result to optimized destination sequence
-     */
-    convertDijkstraToSequence(dijkstraResult, destinations, startLocation) {
-        const { distances } = dijkstraResult;
-        
-        // Create destination-distance pairs (excluding start location at index 0)
-        const destinationDistances = destinations.map((dest, index) => ({
-            destination: dest,
-            distance: distances[index + 1], // +1 because index 0 is start location
-            originalIndex: index
-        }));
-
-        // Sort destinations by shortest distance from start (Dijkstra optimal order)
-        destinationDistances.sort((a, b) => a.distance - b.distance);
-
-        // Build optimized sequence
-        const optimized = destinationDistances.map((item, sequenceIndex) => {
-            const dest = item.destination;
-            const distanceFromStart = item.distance;
-            
-            console.log(`         ${sequenceIndex + 1}. Passenger ${dest.passenger_id} (${distanceFromStart.toFixed(2)}km from start via optimal path)`);
-            
-            return dest;
-        });
-
-        return optimized;
-    }
-
-    /**
      * Helper methods
      */
     createConfirmationResponse(confirmedSchedule, bestBusAnalysis) {
@@ -1048,7 +1040,7 @@ class PassengerRequestService {
             message: message
         };
     }
-
+    
     calculateDistance(lat1, lng1, lat2, lng2) {
         const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -1064,7 +1056,7 @@ class PassengerRequestService {
      * Get or create schedule ID - FIXED to handle completed schedules properly
      */
     async getOrCreateScheduleId(service_id) {
-        console.log(`🔍 Looking for active schedule for service ${service_id}`);
+        console.log(`[SEARCH] Looking for active schedule for service ${service_id}`);
         
         // First check for TRULY active schedules (not completed AND has capacity)
         const [activeSchedules] = await this.pool.execute(`
@@ -1083,7 +1075,7 @@ class PassengerRequestService {
 
         if (activeSchedules.length > 0) {
             const schedule = activeSchedules[0];
-            console.log(`   📅 Found active schedule ${schedule.schedule_id} (Status: ${schedule.status || 'active'}, Passengers: ${schedule.passenger_count})`);
+            console.log(`   [SCHEDULE] Found active schedule ${schedule.schedule_id} (Status: ${schedule.status || 'active'}, Passengers: ${schedule.passenger_count})`);
             
             // Check if schedule still has capacity (get bus capacity)
             const [busInfo] = await this.pool.execute(`
@@ -1095,15 +1087,15 @@ class PassengerRequestService {
             `, [service_id]);
             
             if (busInfo.length > 0 && schedule.passenger_count < busInfo[0].capacity) {
-                console.log(`   ✅ Schedule ${schedule.schedule_id} has capacity (${schedule.passenger_count}/${busInfo[0].capacity})`);
+                console.log(`   [CAPACITY] Schedule ${schedule.schedule_id} has capacity (${schedule.passenger_count}/${busInfo[0].capacity})`);
                 return schedule.schedule_id;
             } else {
-                console.log(`   ❌ Schedule ${schedule.schedule_id} is FULL (${schedule.passenger_count}/${busInfo[0].capacity})`);
+                console.log(`   [FULL] Schedule ${schedule.schedule_id} is FULL (${schedule.passenger_count}/${busInfo[0].capacity})`);
             }
         }
 
         // No active schedule found or existing schedule is full, create a new one
-        console.log(`   📅 Creating NEW schedule for service ${service_id}`);
+        console.log(`   [CREATE] Creating NEW schedule for service ${service_id}`);
         
         // Get the actual service date and time from bus_services table
         const [serviceInfo] = await this.pool.execute(`
@@ -1131,7 +1123,7 @@ class PassengerRequestService {
         
         // Format for MySQL (no timezone conversion needed - database handles timezone)
         const departureTimeString = scheduledDepartureTime.toISOString().slice(0, 19).replace('T', ' ');
-        console.log(`   🕐 Creating schedule with departure time: ${departureTimeString} (Service date: ${serviceInfo[0]?.service_date}, AM: ${serviceInfo[0]?.isAmShift}, PM: ${serviceInfo[0]?.isPmShift})`);
+        console.log(`   [TIME] Creating schedule with departure time: ${departureTimeString} (Service date: ${serviceInfo[0]?.service_date}, AM: ${serviceInfo[0]?.isAmShift}, PM: ${serviceInfo[0]?.isPmShift})`);
         
         const [result] = await this.pool.execute(`
             INSERT INTO schedule (service_id, departure_time, arrival_time, status) 
@@ -1139,7 +1131,7 @@ class PassengerRequestService {
         `, [service_id, departureTimeString]);
 
         const newScheduleId = result.insertId;
-        console.log(`   ✅ Created new schedule ${newScheduleId}`);
+        console.log(`   [SUCCESS] Created new schedule ${newScheduleId}`);
         return newScheduleId;
     }
 }
