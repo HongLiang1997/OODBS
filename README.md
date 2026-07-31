@@ -1,33 +1,142 @@
-# 🚌 OODBS Fullstack App
+# OODBS
 
-This is a fullstack web application using **Node.js + Express** for the backend and **React + Vite** for the frontend. The system includes user login and MySQL database integration.
+OODBS is a full-stack on-demand bus management system built for passengers, drivers, and administrators. The platform combines a Node.js/Express backend, a React/Vite frontend, and a MySQL-backed data layer to support bus operations, service management, route planning, and traffic-aware scheduling.
 
-## Project Structure
+## What this project includes
+
+- Passenger-facing login and dashboard experience
+- Driver login and dashboard experience
+- Admin dashboard for managing buses, services, destinations, and pickup locations
+- Passenger request and routing workflows
+- Traffic-aware analysis and optimization support for route planning
+- MySQL database integration with schema files included in the repository
+
+## Tech stack
+
+- Backend: Node.js, Express, MySQL2, CORS, dotenv, multer, csv-parser, xlsx
+- Frontend: React, Vite, React Router, Axios, Bootstrap, React Icons
+- Documentation: project docs and traffic integration notes under the docs folder
+
+## Project structure
+
+```text
+OODBS/
+├── backend/              # Express API server and business logic
+│   ├── routes/           # API endpoints for auth, buses, services, passengers, routing, traffic, and more
+│   ├── services/         # Traffic awareness and request-processing services
+│   └── index.js          # Server entry point
+├── frontend/             # React/Vite web application
+│   └── src/              # Pages, components, layouts, and styles
+├── database_schema/      # SQL schema files for the database
+├── docs/                 # Project documentation and analysis notes
+└── README.md             # Project overview and setup guide
 ```
-/OODBS
-├── backend/ # Node.js + Express server
-├── frontend/ # React + Vite client
-└── README.md
+
+## Prerequisites
+
+Before running the project, make sure you have:
+
+- Node.js 18+ installed
+- npm installed
+- MySQL database available
+- A local environment file configured for the backend
+
+## Backend setup
+
+1. Open a terminal and go to the backend folder:
+
+```bash
+cd backend
+npm install
 ```
 
-## BackEnd
-### Package Needed
-```
-npm init -y
-npm install express cors dotenv mysql2
-npm install --save-dev nodemon
-npm install multer xlsx
+2. Create a `.env` file in the backend folder with your database and server settings:
 
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=oodbs_db
+PORT=5000
 ```
 
-## FrontEnd
-### Package Needed
-```
-npm create vite@latest . -- --template react
-(Select React -> JavaScript)
+3. Start the backend server:
 
-npm install axios react-router-dom
-npm install bootstrap
-npm install bootstrap @popperjs/core
-
+```bash
+node index.js
 ```
+
+The API server will run on port 5000 by default.
+
+## Frontend setup
+
+1. Open a second terminal and go to the frontend folder:
+
+```bash
+cd frontend
+npm install
+```
+
+2. Start the Vite development server:
+
+```bash
+npm run dev
+```
+
+The frontend should be available through the Vite local URL shown in the terminal.
+
+## Database setup
+
+The repository includes SQL schema files in the database_schema folder. Import the latest schema into your MySQL database before running the application.
+
+Recommended workflow:
+
+- Create a database such as `oodbs_db`
+- Import the latest schema file from `database_schema/`
+- Confirm the connection details in the backend `.env` file
+
+## Main features
+
+### Admin features
+- Manage buses
+- Manage services
+- Manage destinations
+- Manage pickup locations
+- Review system operations from the admin dashboard
+
+### Passenger features
+- Passenger login
+- Passenger dashboard access
+- Request-based bus workflow support
+
+### Driver features
+- Driver login
+- Driver dashboard access
+
+### Traffic-aware capabilities
+- Traffic risk analysis for routes
+- Congestion-aware suggestions
+- Delay and route optimization support
+
+## Documentation
+
+The docs folder contains additional project documentation and analysis guides:
+
+- docs/README.md
+- docs/passenger-request-workflow.md
+- docs/traffic-integration-guide.md
+
+## Notes
+
+- The backend initializes its traffic-related services during startup.
+- The frontend uses client-side routing for passenger, driver, and admin experiences.
+- The project is designed as a practical full-stack prototype and can be extended with more advanced scheduling and live transport integration.
+
+## Next steps
+
+If you want to extend the project further, common next improvements include:
+
+- Add authentication hardening for admin and user roles
+- Connect live traffic or mapping APIs
+- Add more detailed booking and dispatch workflows
+- Improve the admin UI with richer analytics and reporting
