@@ -14,7 +14,7 @@ OODBS is a full-stack on-demand bus management system built for passengers, driv
 ## Tech stack
 
 - Backend: Node.js, Express, MySQL2, CORS, dotenv, multer, csv-parser, xlsx
-- Frontend: React, Vite, React Router, Axios, Bootstrap, React Icons
+- Frontend: React, Vite, React Router, Bootstrap, React Icons
 - Documentation: project docs and traffic integration notes under the docs folder
 
 ## Project structure
@@ -22,13 +22,23 @@ OODBS is a full-stack on-demand bus management system built for passengers, driv
 ```text
 OODBS/
 ├── backend/              # Express API server and business logic
-│   ├── routes/           # API endpoints for auth, buses, services, passengers, routing, traffic, and more
-│   ├── services/         # Traffic awareness and request-processing services
-│   └── index.js          # Server entry point
+│   ├── routes/           # API endpoints (auth, buses, destination, driver, organizations, passenger, passengerRequests, pickuplocation, routing, schedule, services, traffic)
+│   ├── services/         # Backend service implementations (passengerRequestService.js, routingService.js, trafficAwarenessService.js)
+│   ├── traffic/          # Traffic data used by backend (e.g., trafficflow.json)
+│   ├── uploads/          # Uploaded files (images, CSVs, etc.) used by backend
+│   ├── index.js
+│   ├── trip_status_final.js
+│   └── package.json
+├── services/             # Standalone analysis/service scripts (analytics, models)
 ├── frontend/             # React/Vite web application
-│   └── src/              # Pages, components, layouts, and styles
+│   ├── public/           # Static public assets
+│   ├── src/              # Pages, components, layouts, styles (see src/ for details)
+│   ├── package.json
+│   └── vite.config.js
 ├── database_schema/      # SQL schema files for the database
 ├── docs/                 # Project documentation and analysis notes
+├── traffic/              # Top-level traffic data and helpers (analysis scripts reference this)
+├── uploads/              # Top-level uploaded files directory
 └── README.md             # Project overview and setup guide
 ```
 
