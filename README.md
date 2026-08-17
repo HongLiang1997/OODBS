@@ -142,11 +142,4 @@ The docs folder contains additional project documentation and analysis guides:
 - The frontend uses client-side routing for passenger, driver, and admin experiences.
 - The project is designed as a practical full-stack prototype and can be extended with more advanced scheduling and live transport integration.
 
-## Next steps
 
-If you want to extend the project further, common next improvements include:
-
-- Add authentication hardening for admin and user roles
-- Connect live traffic or mapping APIs
-- Add more detailed booking and dispatch workflows
-- Improve the admin UI with richer analytics and reporting
